@@ -1,29 +1,29 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/components/ui/accordion';
+} from "@/components/ui/accordion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,14 +34,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   PlusCircle,
   ScanLine,
@@ -54,16 +54,17 @@ import {
   Laptop,
   MoreHorizontal,
   Search,
-} from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 
-import { useExpenses as useExpensesData } from '@/hooks/use-expenses';
-import type { Expense, Category } from '@/lib/types';
-import { deleteExpense } from '@/lib/db';
-import { ExpenseForm } from '@/components/expense-form';
-import { useToast } from '@/hooks/use-toast';
+import { useExpenses as useExpensesData } from "@/hooks/use-expenses";
+import type { Expense, Category } from "@/lib/types";
+import { deleteExpense } from "@/lib/db";
+import { ExpenseForm } from "@/components/expense-form";
+import { BulkAddExpenses } from "@/components/bulk-add-expenses";
+import { useToast } from "@/hooks/use-toast";
 
 const paymentModeIcons = {
   Cash: Wallet,
@@ -82,7 +83,7 @@ function ExpenseDetails({ expense }: { expense: Expense }) {
       </div>
       <div className="flex items-center gap-2">
         <Calendar className="h-4 w-4 text-muted-foreground" />
-        <span>{format(new Date(expense.date), 'PPP')}</span>
+        <span>{format(new Date(expense.date), "PPP")}</span>
       </div>
       <div className="flex items-center gap-2">
         <PaymentIcon className="h-4 w-4 text-muted-foreground" />
@@ -107,16 +108,16 @@ function ExpenseListItem({
     setIsEditDialogOpen(false);
     onEditSuccess();
   };
-  
+
   return (
     <AccordionItem value={String(expense.id)}>
       <AccordionTrigger className="px-4 hover:no-underline">
         <div className="flex justify-between w-full items-center">
           <span className="font-medium">{expense.title}</span>
           <span className="font-mono text-base pr-2">
-            {new Intl.NumberFormat('en-IN', {
-              style: 'currency',
-              currency: 'INR',
+            {new Intl.NumberFormat("en-IN", {
+              style: "currency",
+              currency: "INR",
             }).format(expense.amount)}
           </span>
         </div>
@@ -172,43 +173,43 @@ function ExpenseListItem({
 }
 
 const ExpensesSkeleton = () => (
-    <Card>
-        <CardHeader>
-        <div className="flex items-center justify-between gap-4">
-          <Skeleton className="h-9 w-48" />
-          <div className="flex items-center gap-2">
-              <Skeleton className="h-9 w-10 sm:w-32" />
-              <Skeleton className="h-9 w-10 sm:w-24" />
-          </div>
+  <Card>
+    <CardHeader>
+      <div className="flex items-center justify-between gap-4">
+        <Skeleton className="h-9 w-48" />
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-9 w-10 sm:w-32" />
+          <Skeleton className="h-9 w-10 sm:w-24" />
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 pt-4">
-            <Skeleton className="h-10 w-full sm:w-64" />
-            <Skeleton className="h-10 w-full sm:w-48" />
-            <Skeleton className="h-10 w-full sm:w-48" />
-        </div>
-        </CardHeader>
-        <CardContent>
-            <div className="border rounded-md">
-                {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="px-4 py-3 border-b">
-                       <div className="flex justify-between items-center">
-                         <Skeleton className="h-6 w-1/3" />
-                         <Skeleton className="h-6 w-1/4" />
-                       </div>
-                    </div>
-                ))}
+      </div>
+      <div className="flex flex-col sm:flex-row gap-2 pt-4">
+        <Skeleton className="h-10 w-full sm:w-64" />
+        <Skeleton className="h-10 w-full sm:w-48" />
+        <Skeleton className="h-10 w-full sm:w-48" />
+      </div>
+    </CardHeader>
+    <CardContent>
+      <div className="border rounded-md">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="px-4 py-3 border-b">
+            <div className="flex justify-between items-center">
+              <Skeleton className="h-6 w-1/3" />
+              <Skeleton className="h-6 w-1/4" />
             </div>
-        </CardContent>
-    </Card>
-)
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+);
 
 export default function ExpensesPage() {
   const { expenses, categories, loading, error, refresh } = useExpensesData();
   const { toast } = useToast();
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [sortOrder, setSortOrder] = useState('newest');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("newest");
 
   const filteredAndSortedExpenses = useMemo(() => {
     let result = expenses;
@@ -219,16 +220,14 @@ export default function ExpensesPage() {
       );
     }
 
-    if (categoryFilter !== 'all') {
-      result = result.filter(
-        (expense) => expense.category === categoryFilter
-      );
+    if (categoryFilter !== "all") {
+      result = result.filter((expense) => expense.category === categoryFilter);
     }
 
     result.sort((a, b) => {
       const dateA = new Date(a.date).getTime();
       const dateB = new Date(b.date).getTime();
-      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+      return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
     });
 
     return result;
@@ -237,23 +236,23 @@ export default function ExpensesPage() {
   const handleDelete = async (id: number) => {
     try {
       await deleteExpense(id);
-      toast({ title: 'Expense deleted successfully.' });
+      toast({ title: "Expense deleted successfully." });
       refresh();
     } catch (err) {
-      toast({ title: 'Failed to delete expense.', variant: 'destructive' });
+      toast({ title: "Failed to delete expense.", variant: "destructive" });
     }
   };
-  
+
   const handleEditSuccess = () => {
     refresh();
-  }
+  };
 
   if (loading) {
     return <ExpensesSkeleton />;
   }
-  
+
   if (error) {
-     return (
+    return (
       <div className="text-center py-10">
         <p className="text-destructive">Error: {error}</p>
       </div>
@@ -266,10 +265,13 @@ export default function ExpensesPage() {
         <div className="flex items-center justify-between gap-4">
           <CardTitle className="text-2xl shrink-0">Expense History</CardTitle>
           <div className="flex items-center gap-2">
+            <BulkAddExpenses onSuccess={refresh} />
             <Button asChild size="sm">
               <Link href="/expenses/new">
                 <PlusCircle className="h-4 w-4" />
-                <span className="hidden sm:inline-block sm:ml-2">New Expense</span>
+                <span className="hidden sm:inline-block sm:ml-2">
+                  New Expense
+                </span>
               </Link>
             </Button>
             <Button asChild variant="outline" size="sm">
@@ -296,11 +298,12 @@ export default function ExpensesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {categories && categories.map((cat) => (
-                <SelectItem key={cat.id} value={cat.name}>
-                  {cat.name}
-                </SelectItem>
-              ))}
+              {categories &&
+                categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
           <Select value={sortOrder} onValueChange={setSortOrder}>

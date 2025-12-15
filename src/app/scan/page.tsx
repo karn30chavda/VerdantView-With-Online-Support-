@@ -49,6 +49,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 
 type EditableExpense = Omit<Expense, "id">;
@@ -523,9 +524,38 @@ export default function ExpenseScanner() {
             </CardHeader>
             <CardContent className="min-h-[350px]">
               {isLoading ? (
-                <div className="flex flex-col gap-4 items-center justify-center h-full">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="border rounded-md p-4 space-y-3">
+                      {/* Expense header skeleton */}
+                      <div className="flex justify-between items-center">
+                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-5 w-24" />
+                      </div>
+                      {/* Expense details skeleton */}
+                      <div className="grid grid-cols-2 gap-4 pt-2">
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-16" />
+                          <Skeleton className="h-9 w-full" />
+                        </div>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-16" />
+                          <Skeleton className="h-9 w-full" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-12" />
+                          <Skeleton className="h-9 w-full" />
+                        </div>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-20" />
+                          <Skeleton className="h-9 w-full" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-sm text-center text-muted-foreground mt-4 animate-pulse">
                     Gemini AI is reading the document...
                   </p>
                 </div>
