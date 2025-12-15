@@ -1,0 +1,10 @@
+{
+  "placeholderImages": [
+    {
+      "id": "receipt-scan-placeholder",
+      "description": "A placeholder image of a receipt, ready for scanning.",
+      "imageUrl": "https://picsum.photos/seed/receipt1/800/1200",
+      "imageHint": "receipt paper"
+    }
+  ]
+}
