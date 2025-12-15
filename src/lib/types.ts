@@ -4,7 +4,7 @@ export interface Expense {
   amount: number;
   date: string; // ISO string format
   category: string;
-  paymentMode: 'Cash' | 'Card' | 'Online' | 'Other';
+  paymentMode: "Cash" | "Card" | "Online" | "Other";
 }
 
 export interface Category {
@@ -16,6 +16,9 @@ export interface Reminder {
   id?: number;
   title: string;
   date: string; // ISO string format
+  isRecurring?: boolean; // Whether this reminder repeats
+  repeatInterval?: number; // Number of days between repetitions (e.g., 30 for monthly)
+  lastTriggered?: string; // ISO string - when it was last triggered/shown
 }
 
 export interface AppSettings {
