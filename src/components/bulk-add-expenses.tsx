@@ -1,15 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -19,11 +12,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Plus, ListPlus, Save } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Trash2, Plus, Save, Loader2, ArrowLeft } from "lucide-react";
 import { useExpenses } from "@/hooks/use-expenses";
 import { useToast } from "@/hooks/use-toast";
 import type { Expense } from "@/lib/types";
-import { Card } from "@/components/ui/card";
 
 type QuickExpense = Omit<Expense, "id">;
 
@@ -35,8 +34,8 @@ const defaultExpense = (): QuickExpense => ({
   paymentMode: "Cash" as const,
 });
 
-export function BulkAddExpenses({ onSuccess }: { onSuccess: () => void }) {
-  const [isOpen, setIsOpen] = useState(false);
+export function BulkExpenseForm() {
+  const router = useRouter();
   const [expenses, setExpenses] = useState<QuickExpense[]>([defaultExpense()]);
   const { categories, addMultipleExpenses } = useExpenses();
   const { toast } = useToast();
@@ -83,9 +82,8 @@ export function BulkAddExpenses({ onSuccess }: { onSuccess: () => void }) {
         title: "Success!",
         description: `${validExpenses.length} expense(s) added successfully.`,
       });
-      setExpenses([defaultExpense()]);
-      setIsOpen(false);
-      onSuccess();
+      router.push("/expenses");
+      router.refresh(); // Refresh data on navigation
     } catch (error) {
       toast({
         variant: "destructive",
@@ -97,90 +95,99 @@ export function BulkAddExpenses({ onSuccess }: { onSuccess: () => void }) {
     }
   };
 
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (!open) {
-      // Reset on close
-      setExpenses([defaultExpense()]);
-    }
-  };
-
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <ListPlus className="h-4 w-4" />
-          <span className="hidden sm:inline-block sm:ml-2">
-            Quick Add Multiple
-          </span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Quick Add Multiple Expenses</DialogTitle>
-          <DialogDescription>
-            Add all your expenses from the day at once. Perfect for when you
-            forget to track in real-time!
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-3 py-4">
+    <Card className="w-full shadow-md">
+      <CardHeader>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.back()}
+            className="-ml-2"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <CardTitle>Bulk Add Expenses</CardTitle>
+            <CardDescription className="mt-1">
+              Quickly add multiple transactions at once.
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-4">
           {expenses.map((expense, index) => (
-            <Card key={index} className="p-4">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-sm font-medium text-muted-foreground">
-                  Expense #{index + 1}
-                </span>
-                {expenses.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemove(index)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Title */}
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor={`title-${index}`}>
-                    Title <span className="text-destructive">*</span>
+            <div
+              key={index}
+              className="group relative p-6 rounded-xl border border-border/50 transition-all bg-background"
+            >
+              {/* Header with Title and Delete */}
+              <div className="flex justify-between items-start gap-4 mb-4">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor={`title-${index}`} className="sr-only">
+                    Title
                   </Label>
                   <Input
                     id={`title-${index}`}
-                    placeholder="e.g., Lunch at cafe"
+                    placeholder="e.g. Lunch at cafe"
                     value={expense.title}
                     onChange={(e) =>
                       handleChange(index, "title", e.target.value)
                     }
+                    className="h-11 text-base font-medium border-0 border-b rounded-none px-0 focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/50 bg-transparent"
                   />
                 </div>
+                {expenses.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive shrink-0 -mt-1 -mr-2 opacity-50 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleRemove(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
 
+              <div className="grid grid-cols-2 gap-4">
                 {/* Amount */}
-                <div className="space-y-2">
-                  <Label htmlFor={`amount-${index}`}>
-                    Amount (₹) <span className="text-destructive">*</span>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor={`amount-${index}`}
+                    className="text-xs text-muted-foreground"
+                  >
+                    Amount
                   </Label>
-                  <Input
-                    id={`amount-${index}`}
-                    type="number"
-                    placeholder="0.00"
-                    value={expense.amount || ""}
-                    onChange={(e) =>
-                      handleChange(
-                        index,
-                        "amount",
-                        parseFloat(e.target.value) || 0
-                      )
-                    }
-                  />
+                  <div className="relative">
+                    <span className="absolute left-3 top-3 text-muted-foreground">
+                      ₹
+                    </span>
+                    <Input
+                      id={`amount-${index}`}
+                      type="number"
+                      placeholder="0.00"
+                      value={expense.amount || ""}
+                      onChange={(e) =>
+                        handleChange(
+                          index,
+                          "amount",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      className="h-11 pl-7"
+                    />
+                  </div>
                 </div>
 
                 {/* Date */}
-                <div className="space-y-2">
-                  <Label htmlFor={`date-${index}`}>Date</Label>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor={`date-${index}`}
+                    className="text-xs text-muted-foreground"
+                  >
+                    Date
+                  </Label>
                   <Input
                     id={`date-${index}`}
                     type="date"
@@ -192,13 +199,14 @@ export function BulkAddExpenses({ onSuccess }: { onSuccess: () => void }) {
                         new Date(e.target.value).toISOString()
                       )
                     }
+                    className="h-11"
                   />
                 </div>
 
                 {/* Category */}
-                <div className="space-y-2">
-                  <Label>
-                    Category <span className="text-destructive">*</span>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    Category
                   </Label>
                   <Select
                     value={expense.category}
@@ -206,8 +214,8 @@ export function BulkAddExpenses({ onSuccess }: { onSuccess: () => void }) {
                       handleChange(index, "category", value)
                     }
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((cat) => (
@@ -220,15 +228,15 @@ export function BulkAddExpenses({ onSuccess }: { onSuccess: () => void }) {
                 </div>
 
                 {/* Payment Mode */}
-                <div className="space-y-2">
-                  <Label>Payment Mode</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Mode</Label>
                   <Select
                     value={expense.paymentMode}
                     onValueChange={(value: any) =>
                       handleChange(index, "paymentMode", value)
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -240,12 +248,12 @@ export function BulkAddExpenses({ onSuccess }: { onSuccess: () => void }) {
                   </Select>
                 </div>
               </div>
-            </Card>
+            </div>
           ))}
 
           <Button
             variant="outline"
-            className="w-full"
+            className="w-full h-12 border-dashed border-2 hover:border-solid hover:bg-muted/50"
             onClick={handleAdd}
             type="button"
           >
@@ -254,26 +262,22 @@ export function BulkAddExpenses({ onSuccess }: { onSuccess: () => void }) {
           </Button>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
+        <div className="pt-4">
           <Button
-            variant="outline"
-            onClick={() => setIsOpen(false)}
+            onClick={handleSave}
             disabled={isSaving}
+            className="w-full h-11"
+            size="lg"
           >
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
             {isSaving ? (
-              <>Saving...</>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Save All ({expenses.length})
-              </>
+              <Save className="mr-2 h-4 w-4" />
             )}
+            Save All ({expenses.length})
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </CardContent>
+    </Card>
   );
 }

@@ -231,9 +231,23 @@ export function ExpenseForm({ expense, onSave }: ExpenseFormProps) {
   return (
     <Card className="w-full shadow-md">
       <CardHeader>
-        <CardTitle>
-          {expense ? "Edit Transaction" : "New Transaction"}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>
+            {expense ? "Edit Transaction" : "New Transaction"}
+          </CardTitle>
+          {!expense && currentType === "expense" && (
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="gap-2 border-primary/20 hover:border-primary/50 hover:bg-primary/5"
+            >
+              <a href="/expenses/bulk">
+                <span className="font-semibold text-primary">Bulk Add</span>
+              </a>
+            </Button>
+          )}
+        </div>
         <CardDescription>
           Enter the details of your transaction.
         </CardDescription>

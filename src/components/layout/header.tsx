@@ -16,7 +16,7 @@ export function Header() {
           </span>
         </Link>
 
-        <div className="hidden md:flex">
+        <div className="hidden lg:flex">
           <MainNav />
         </div>
 

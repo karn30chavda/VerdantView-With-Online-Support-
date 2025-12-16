@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -54,16 +53,15 @@ import {
   Laptop,
   MoreHorizontal,
   Search,
+  ListPlus,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
 import { useExpenses as useExpensesData } from "@/hooks/use-expenses";
 import type { Expense, Category } from "@/lib/types";
 import { deleteExpense } from "@/lib/db";
 import { ExpenseForm } from "@/components/expense-form";
-import { BulkAddExpenses } from "@/components/bulk-add-expenses";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -288,7 +286,14 @@ export default function ExpensesPage() {
             Transaction History
           </CardTitle>
           <div className="flex items-center gap-2">
-            <BulkAddExpenses onSuccess={refresh} />
+            <Button asChild variant="outline" size="sm">
+              <Link href="/expenses/bulk">
+                <ListPlus className="h-4 w-4" />
+                <span className="hidden sm:inline-block sm:ml-2">
+                  Quick Add Multiple
+                </span>
+              </Link>
+            </Button>
             <Button asChild size="sm">
               <Link href="/expenses/new">
                 <PlusCircle className="h-4 w-4" />

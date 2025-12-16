@@ -73,7 +73,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <div className="relative flex min-h-screen w-full flex-col">
             <Header />
-            <main className="flex-1 p-4 pb-20 sm:p-6 md:p-8 md:pb-8">
+            <main className="flex-1 p-4 pb-20 sm:p-6 sm:pb-20 md:p-8 md:pb-20 lg:pb-8">
               {children}
             </main>
             <BottomNav />
