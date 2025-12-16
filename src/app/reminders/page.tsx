@@ -54,14 +54,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 
 const reminderSchema = z.object({
   title: z.string().min(2, { message: "Title must be at least 2 characters." }),
@@ -77,9 +69,19 @@ async function scheduleReminderNotifications(title: string, date: Date) {
     Notification.permission === "granted"
   ) {
     const registration = await navigator.serviceWorker.ready;
-    // Schedule for one day before
-    const oneDayBefore = new Date(date.getTime() - 24 * 60 * 60 * 1000);
-    if (oneDayBefore > new Date()) {
+    const now = new Date();
+
+    // Default to 9:00 AM for notifications
+    const dueDatePoints = new Date(date);
+    dueDatePoints.setHours(9, 0, 0, 0);
+
+    // 1. Handle "Upcoming" notification (1 day before)
+    const oneDayBefore = new Date(
+      dueDatePoints.getTime() - 24 * 60 * 60 * 1000
+    );
+
+    if (oneDayBefore.getTime() > now.getTime()) {
+      // Future
       registration.active?.postMessage({
         type: "SCHEDULE_REMINDER",
         payload: {
@@ -88,16 +90,43 @@ async function scheduleReminderNotifications(title: string, date: Date) {
           schedule: { at: oneDayBefore.getTime() },
         },
       });
+    } else if (
+      isToday(oneDayBefore) &&
+      oneDayBefore.getTime() <= now.getTime()
+    ) {
+      // It is the day before, but past 9 AM. Show "Upcoming" now.
+      registration.active?.postMessage({
+        type: "SCHEDULE_REMINDER",
+        payload: {
+          title: `Upcoming: ${title}`,
+          options: { body: `Due tomorrow.` },
+          schedule: { at: now.getTime() + 1000 },
+        },
+      });
     }
-    // Schedule for the due date
-    registration.active?.postMessage({
-      type: "SCHEDULE_REMINDER",
-      payload: {
-        title: `Due Today: ${title}`,
-        options: { body: `Payment is due today.` },
-        schedule: { at: date.getTime() },
-      },
-    });
+
+    // 2. Handle "Due Today" notification
+    if (dueDatePoints.getTime() > now.getTime()) {
+      // Future
+      registration.active?.postMessage({
+        type: "SCHEDULE_REMINDER",
+        payload: {
+          title: `Due Today: ${title}`,
+          options: { body: `Payment is due today.` },
+          schedule: { at: dueDatePoints.getTime() },
+        },
+      });
+    } else if (isToday(dueDatePoints)) {
+      // It is due date, but past 9 AM. Show "Due Today" now.
+      registration.active?.postMessage({
+        type: "SCHEDULE_REMINDER",
+        payload: {
+          title: `Due Today: ${title}`,
+          options: { body: `Payment is due today.` },
+          schedule: { at: now.getTime() + 1000 }, // delay slightly
+        },
+      });
+    }
   }
 }
 
@@ -139,10 +168,28 @@ export default function RemindersPage() {
   }, [fetchReminders]);
 
   const requestNotificationPermission = async () => {
-    if (!("Notification" in window)) return;
+    if (!("Notification" in window)) {
+      toast({
+        title: "Notifications not supported",
+        description: "Your browser does not support notifications.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const permission = await Notification.requestPermission();
     setNotificationPermission(permission);
-    if (permission === "granted") toast({ title: "Notifications enabled!" });
+
+    if (permission === "granted") {
+      toast({ title: "Notifications enabled!" });
+    } else if (permission === "denied") {
+      toast({
+        title: "Notifications blocked",
+        description:
+          "Please enable notifications in your browser settings to receive reminders.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAddReminder = async (values: z.infer<typeof reminderSchema>) => {
@@ -261,7 +308,6 @@ export default function RemindersPage() {
                       <Popover
                         open={isDatePickerOpen}
                         onOpenChange={setIsDatePickerOpen}
-                        modal={true}
                       >
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -281,7 +327,11 @@ export default function RemindersPage() {
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent
+                          className="w-auto p-0"
+                          align="start"
+                          disablePortal
+                        >
                           <Calendar
                             mode="single"
                             selected={field.value}
@@ -372,9 +422,10 @@ export default function RemindersPage() {
 
       {/* Notification prompt */}
       {notificationPermission !== "granted" && (
-        <div
+        <button
+          type="button"
           onClick={requestNotificationPermission}
-          className="flex items-center gap-3 p-4 bg-primary/10 rounded-xl cursor-pointer hover:bg-primary/20 transition-colors border border-primary/20"
+          className="w-full flex items-center text-left gap-3 p-4 bg-primary/10 rounded-xl cursor-pointer hover:bg-primary/20 transition-colors border border-primary/20"
         >
           <div className="p-2 bg-primary/20 rounded-full text-primary">
             <Bell className="h-5 w-5" />
@@ -386,7 +437,7 @@ export default function RemindersPage() {
             </p>
           </div>
           <CheckCircle2 className="h-5 w-5 text-muted-foreground/50" />
-        </div>
+        </button>
       )}
 
       {/* Reminders List */}

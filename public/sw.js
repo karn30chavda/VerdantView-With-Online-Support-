@@ -1,34 +1,33 @@
 // Define a cache name
-const CACHE_NAME = 'verdant-view-cache-v1';
+const CACHE_NAME = "verdant-view-cache-v1";
 
 // List of files to cache
 const urlsToCache = [
-  '/',
-  '/expenses',
-  '/reminders',
-  '/settings',
-  '/scan',
-  '/manifest.json'
+  "/",
+  "/expenses",
+  "/reminders",
+  "/settings",
+  "/scan",
+  "/manifest.json",
   // Note: We won't cache Next.js specific JS bundles by name
   // as they have hashes. We'll cache them dynamically.
 ];
 
 // Install service worker
-self.addEventListener('install', event => {
+self.addEventListener("install", (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log("Opened cache");
+      return cache.addAll(urlsToCache);
+    })
   );
 });
 
 // Fetch event
-self.addEventListener('fetch', event => {
+self.addEventListener("fetch", (event) => {
   // We only want to cache GET requests.
-  if (event.request.method !== 'GET') {
+  if (event.request.method !== "GET") {
     return;
   }
 
@@ -40,10 +39,10 @@ self.addEventListener('fetch', event => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
         // If we got a valid response, clone it and cache it.
         if (networkResponse && networkResponse.status === 200) {
-            // We only cache app-served resources, not external ones
-            if (event.request.url.startsWith(self.location.origin)) {
-                 cache.put(event.request, networkResponse.clone());
-            }
+          // We only cache app-served resources, not external ones
+          if (event.request.url.startsWith(self.location.origin)) {
+            cache.put(event.request, networkResponse.clone());
+          }
         }
         return networkResponse;
       });
@@ -54,14 +53,13 @@ self.addEventListener('fetch', event => {
   );
 });
 
-
 // Activate event
-self.addEventListener('activate', event => {
+self.addEventListener("activate", (event) => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
-    caches.keys().then(cacheNames => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map(cacheName => {
+        cacheNames.map((cacheName) => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
             return caches.delete(cacheName);
           }
@@ -71,16 +69,20 @@ self.addEventListener('activate', event => {
   );
 });
 
+self.addEventListener("message", (event) => {
+  if (event.data.type === "SCHEDULE_REMINDER") {
+    const { title, options, schedule } = event.data.payload;
+    const timeUntilNotification = schedule.at - Date.now();
 
-self.addEventListener('message', event => {
-    if (event.data.type === 'SCHEDULE_REMINDER') {
-        const { title, options, schedule } = event.data.payload;
-        const timeUntilNotification = schedule.at - Date.now();
-        
-        if (timeUntilNotification > 0) {
-            setTimeout(() => {
-                self.registration.showNotification(title, options);
-            }, timeUntilNotification);
-        }
+    // Use Math.max to ensure non-negative delay, allowing immediate execution if time is passed/now
+    const delay = Math.max(0, timeUntilNotification);
+
+    // We allow scheduling even if it's slightly in the past (handled by immediate timeout)
+    // Only ignore if it is significantly in the past (e.g. > 1 min ago) which implies a logic error or stale event
+    if (timeUntilNotification > -60000) {
+      setTimeout(() => {
+        self.registration.showNotification(title, options);
+      }, delay);
     }
+  }
 });
