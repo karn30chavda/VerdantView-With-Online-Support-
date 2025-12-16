@@ -37,8 +37,8 @@ export function BottomNav() {
   ];
 
   return (
-    <div className="fixed bottom-5 left-4 right-4 z-50 md:hidden">
-      <div className="flex h-16 items-center justify-between rounded-full border border-white/20 bg-background/80 px-2 shadow-2xl shadow-black/10 backdrop-blur-xl transition-all supports-[backdrop-filter]:bg-background/60 dark:border-white/10 dark:bg-black/60 dark:shadow-black/20">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-background/80 backdrop-blur-xl md:hidden">
+      <div className="flex h-16 items-center justify-between px-4 pb-safe-area-inset-bottom">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -46,28 +46,27 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "group flex flex-1 flex-col items-center justify-center gap-1 transition-all duration-300",
-                "hover:text-primary"
+                "group flex flex-1 flex-col items-center justify-center gap-1 py-1 transition-colors duration-200",
+                isActive
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <div
+              <item.icon
                 className={cn(
-                  "flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-sm scale-100"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground bg-transparent"
+                  "h-6 w-6 transition-transform duration-200",
+                  isActive && "scale-105"
+                )}
+                strokeWidth={isActive ? 2.5 : 2}
+              />
+              <span
+                className={cn(
+                  "text-[10px] font-medium transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground"
                 )}
               >
-                <item.icon
-                  className={cn(
-                    "h-6 w-6 transition-transform duration-300",
-                    isActive && "scale-110 stroke-[2.5px]"
-                  )}
-                />
-              </div>
-
-              {/* Optional: Add a subtle indicator dot for inactive items that have notifications? 
-                  For now, we keep it clean. */}
+                {item.label}
+              </span>
             </Link>
           );
         })}

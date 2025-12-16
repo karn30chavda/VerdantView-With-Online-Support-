@@ -5,12 +5,8 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
-  { href: "/", label: "Dashboard" },
   { href: "/expenses", label: "Expenses" },
   { href: "/statistics", label: "Statistics" },
-  { href: "/split", label: "Split" },
-  { href: "/savings", label: "Savings" },
-  { href: "/scan", label: "Scan" },
   { href: "/reminders", label: "Reminders" },
   { href: "/settings", label: "Settings" },
 ];
