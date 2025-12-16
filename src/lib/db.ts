@@ -291,12 +291,14 @@ export const clearOldReminders = async (): Promise<void> => {
 // Settings
 export const getSettings = (): Promise<AppSettings> =>
   performDBOperation("settings", "readonly", (store) => store.get(1));
-export const updateSettings = (
+export const updateSettings = async (
   settings: Partial<AppSettings>
-): Promise<IDBValidKey> =>
-  performDBOperation("settings", "readwrite", (store) =>
-    store.put({ ...settings, id: 1 })
+): Promise<IDBValidKey> => {
+  const existingSettings = await getSettings();
+  return performDBOperation("settings", "readwrite", (store) =>
+    store.put({ ...existingSettings, ...settings, id: 1 })
   );
+};
 
 // Savings Transactions
 export const getSavingsTransactions = (): Promise<SavingsTransaction[]> =>
