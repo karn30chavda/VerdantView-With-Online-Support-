@@ -345,70 +345,124 @@ export default function RemindersPage() {
                     <FormField
                       control={form.control}
                       name="repeatInterval"
-                      render={({ field }) => (
-                        <FormItem className="pl-9 mt-6">
-                          <FormLabel className="text-base mb-3 block">
-                            Repeat every
-                          </FormLabel>
-                          <Select
-                            value={field.value?.toString()}
-                            onValueChange={(value) =>
-                              field.onChange(parseInt(value))
-                            }
-                          >
-                            <FormControl>
-                              <SelectTrigger className="h-12 text-base w-full md:w-[300px]">
-                                <SelectValue placeholder="Select interval" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem
-                                value="7"
-                                className="py-3 cursor-pointer"
+                      render={({ field }) => {
+                        const PRESET_INTERVALS = [7, 14, 30, 60, 90, 180, 365];
+                        const isCustom = !PRESET_INTERVALS.includes(
+                          field.value || 0
+                        );
+
+                        return (
+                          <FormItem className="pl-9 mt-6">
+                            <FormLabel className="text-base mb-3 block">
+                              Repeat every
+                            </FormLabel>
+                            <div className="space-y-3">
+                              <Select
+                                value={
+                                  isCustom ? "custom" : field.value?.toString()
+                                }
+                                onValueChange={(value) => {
+                                  if (value === "custom") {
+                                    // Keep current value if possible, else default to 1, but we need to trigger 'custom' state
+                                    // Logic: if we switch to custom, we just let the input be editable.
+                                    // If the current value is already a preset, we might want to change it to something non-preset or just let the input handle it?
+                                    // Actually, if we switch to custom, we can just leave the value as is (even if it matches a preset efficiently)
+                                    // BUT my isCustom logic depends on value NOT being in preset.
+                                    // So to force 'custom' state, we might need a value that isn't a preset?
+                                    // This is tricky.
+                                    // Alternative: standard controlled boolean for "isCustomMode".
+                                    // Let's stick to the boolean state approach instead of derived state, it's safer for UX.
+                                    // But wait, render prop doesn't have local state easily unless I use the component state.
+                                    // I can use a local variable if I just depend on the value?
+
+                                    // Let's revise:
+                                    // If user selects "custom", I set value to something default like "1" (if 1 is not in presets). 1 IS NOT in presets.
+                                    field.onChange(1);
+                                  } else {
+                                    field.onChange(parseInt(value));
+                                  }
+                                }}
                               >
-                                7 days (Weekly)
-                              </SelectItem>
-                              <SelectItem
-                                value="14"
-                                className="py-3 cursor-pointer"
-                              >
-                                14 days (Bi-weekly)
-                              </SelectItem>
-                              <SelectItem
-                                value="30"
-                                className="py-3 cursor-pointer"
-                              >
-                                30 days (Monthly)
-                              </SelectItem>
-                              <SelectItem
-                                value="60"
-                                className="py-3 cursor-pointer"
-                              >
-                                60 days (2 Months)
-                              </SelectItem>
-                              <SelectItem
-                                value="90"
-                                className="py-3 cursor-pointer"
-                              >
-                                90 days (Quarterly)
-                              </SelectItem>
-                              <SelectItem
-                                value="180"
-                                className="py-3 cursor-pointer"
-                              >
-                                180 days (Half-yearly)
-                              </SelectItem>
-                              <SelectItem
-                                value="365"
-                                className="py-3 cursor-pointer"
-                              >
-                                365 days (Yearly)
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                                <FormControl>
+                                  <SelectTrigger className="h-12 text-base w-full md:w-[300px]">
+                                    <SelectValue placeholder="Select interval" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem
+                                    value="7"
+                                    className="py-3 cursor-pointer"
+                                  >
+                                    7 days (Weekly)
+                                  </SelectItem>
+                                  <SelectItem
+                                    value="14"
+                                    className="py-3 cursor-pointer"
+                                  >
+                                    14 days (Bi-weekly)
+                                  </SelectItem>
+                                  <SelectItem
+                                    value="30"
+                                    className="py-3 cursor-pointer"
+                                  >
+                                    30 days (Monthly)
+                                  </SelectItem>
+                                  <SelectItem
+                                    value="60"
+                                    className="py-3 cursor-pointer"
+                                  >
+                                    60 days (2 Months)
+                                  </SelectItem>
+                                  <SelectItem
+                                    value="90"
+                                    className="py-3 cursor-pointer"
+                                  >
+                                    90 days (Quarterly)
+                                  </SelectItem>
+                                  <SelectItem
+                                    value="180"
+                                    className="py-3 cursor-pointer"
+                                  >
+                                    180 days (Half-yearly)
+                                  </SelectItem>
+                                  <SelectItem
+                                    value="365"
+                                    className="py-3 cursor-pointer"
+                                  >
+                                    365 days (Yearly)
+                                  </SelectItem>
+                                  <SelectItem
+                                    value="custom"
+                                    className="py-3 cursor-pointer font-semibold"
+                                  >
+                                    Custom Days
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+
+                              {isCustom && (
+                                <div className="flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                  <Input
+                                    type="number"
+                                    value={field.value || ""}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    }
+                                    className="h-12 w-full "
+                                    min={1}
+                                  />
+                                  <span className="text-muted-foreground">
+                                    days
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
                     />
                   )}
                 </div>

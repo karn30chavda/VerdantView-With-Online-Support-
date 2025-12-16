@@ -5,6 +5,7 @@ export interface Expense {
   date: string; // ISO string format
   category: string;
   paymentMode: "Cash" | "Card" | "Online" | "Other";
+  type?: "income" | "expense";
 }
 
 export interface Category {
@@ -24,4 +25,15 @@ export interface Reminder {
 export interface AppSettings {
   id?: number;
   monthlyBudget: number;
+  emergencyFundGoal?: number;
+  emergencyFundCurrent?: number;
+  userName?: string;
+}
+
+export interface SavingsTransaction {
+  id?: number;
+  amount: number;
+  date: string; // ISO string
+  type: "deposit" | "withdrawal" | "goal_update";
+  note?: string;
 }

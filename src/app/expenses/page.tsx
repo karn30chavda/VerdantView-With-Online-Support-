@@ -65,6 +65,7 @@ import { deleteExpense } from "@/lib/db";
 import { ExpenseForm } from "@/components/expense-form";
 import { BulkAddExpenses } from "@/components/bulk-add-expenses";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const paymentModeIcons = {
   Cash: Wallet,
@@ -74,7 +75,7 @@ const paymentModeIcons = {
 };
 
 function ExpenseDetails({ expense }: { expense: Expense }) {
-  const PaymentIcon = paymentModeIcons[expense.paymentMode];
+  const PaymentIcon = paymentModeIcons[expense.paymentMode] || MoreHorizontal;
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
       <div className="flex items-center gap-2">
@@ -103,6 +104,7 @@ function ExpenseListItem({
   onEditSuccess: () => void;
 }) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const isIncome = expense.type === "income";
 
   const handleEditSuccess = () => {
     setIsEditDialogOpen(false);
@@ -114,7 +116,13 @@ function ExpenseListItem({
       <AccordionTrigger className="px-4 hover:no-underline">
         <div className="flex justify-between w-full items-center">
           <span className="font-medium">{expense.title}</span>
-          <span className="font-mono text-base pr-2">
+          <span
+            className={cn(
+              "font-mono text-base pr-2",
+              isIncome ? "text-emerald-600" : "text-red-600"
+            )}
+          >
+            {isIncome ? "+" : "-"}
             {new Intl.NumberFormat("en-IN", {
               style: "currency",
               currency: "INR",
@@ -133,7 +141,7 @@ function ExpenseListItem({
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Edit Expense</DialogTitle>
+                <DialogTitle>Edit Transaction</DialogTitle>
               </DialogHeader>
               <div className="py-4">
                 <ExpenseForm expense={expense} onSave={handleEditSuccess} />
@@ -152,7 +160,7 @@ function ExpenseListItem({
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
                   This action cannot be undone. This will permanently delete
-                  this expense.
+                  this transaction.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -209,21 +217,34 @@ export default function ExpensesPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("newest");
 
   const filteredAndSortedExpenses = useMemo(() => {
     let result = expenses;
 
+    // Filter by Search Term
     if (searchTerm) {
       result = result.filter((expense) =>
         expense.title.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
+    // Filter by Category
     if (categoryFilter !== "all") {
       result = result.filter((expense) => expense.category === categoryFilter);
     }
 
+    // Filter by Type (Income/Expense/All)
+    if (typeFilter !== "all") {
+      result = result.filter((e) => {
+        if (typeFilter === "income") return e.type === "income";
+        if (typeFilter === "expense") return !e.type || e.type === "expense";
+        return true;
+      });
+    }
+
+    // Sort
     result.sort((a, b) => {
       const dateA = new Date(a.date).getTime();
       const dateB = new Date(b.date).getTime();
@@ -231,15 +252,15 @@ export default function ExpensesPage() {
     });
 
     return result;
-  }, [expenses, searchTerm, categoryFilter, sortOrder]);
+  }, [expenses, searchTerm, categoryFilter, typeFilter, sortOrder]);
 
   const handleDelete = async (id: number) => {
     try {
       await deleteExpense(id);
-      toast({ title: "Expense deleted successfully." });
+      toast({ title: "Transaction deleted successfully." });
       refresh();
     } catch (err) {
-      toast({ title: "Failed to delete expense.", variant: "destructive" });
+      toast({ title: "Failed to delete transaction.", variant: "destructive" });
     }
   };
 
@@ -263,15 +284,15 @@ export default function ExpensesPage() {
     <Card className="w-full">
       <CardHeader>
         <div className="flex items-center justify-between gap-4">
-          <CardTitle className="text-2xl shrink-0">Expense History</CardTitle>
+          <CardTitle className="text-2xl shrink-0">
+            Transaction History
+          </CardTitle>
           <div className="flex items-center gap-2">
             <BulkAddExpenses onSuccess={refresh} />
             <Button asChild size="sm">
               <Link href="/expenses/new">
                 <PlusCircle className="h-4 w-4" />
-                <span className="hidden sm:inline-block sm:ml-2">
-                  New Expense
-                </span>
+                <span className="hidden sm:inline-block sm:ml-2">New</span>
               </Link>
             </Button>
             <Button asChild variant="outline" size="sm">
@@ -292,6 +313,16 @@ export default function ExpensesPage() {
               className="pl-8 sm:w-64"
             />
           </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="sm:w-32">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="income">Income</SelectItem>
+              <SelectItem value="expense">Expense</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="sm:w-48">
               <SelectValue placeholder="Filter by category" />
@@ -331,9 +362,9 @@ export default function ExpensesPage() {
           </Accordion>
         ) : (
           <div className="text-center py-16 border-2 border-dashed rounded-md">
-            <p className="text-muted-foreground">No expenses found.</p>
+            <p className="text-muted-foreground">No transactions found.</p>
             <p className="text-sm text-muted-foreground">
-              Try adjusting your filters or add a new expense.
+              Try adjusting your filters or add a new one.
             </p>
           </div>
         )}

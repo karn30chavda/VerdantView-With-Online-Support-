@@ -38,18 +38,7 @@ const pwaConfig = withPWA({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development", // Disable in dev for easier debugging
-  runtimeCaching: [
-    {
-      urlPattern: /^https?.*/,
-      handler: "NetworkFirst",
-      options: {
-        cacheName: "offlineCache",
-        expiration: {
-          maxEntries: 200,
-        },
-      },
-    },
-  ],
+  runtimeCaching: require("next-pwa/cache"),
 });
 
 export default pwaConfig(nextConfig);

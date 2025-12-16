@@ -1,8 +1,8 @@
-import Link from 'next/link';
-import { Leaf } from 'lucide-react';
-import { MainNav } from '@/components/layout/main-nav';
-import { MobileNav } from '@/components/layout/mobile-nav';
-import { ThemeToggle } from '@/components/layout/theme-toggle';
+import Link from "next/link";
+import { Leaf } from "lucide-react";
+import { MainNav } from "@/components/layout/main-nav";
+
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export function Header() {
   return (
@@ -15,7 +15,6 @@ export function Header() {
         <MainNav />
         <div className="flex flex-1 items-center justify-end space-x-2">
           <ThemeToggle />
-          <MobileNav />
         </div>
       </div>
     </header>

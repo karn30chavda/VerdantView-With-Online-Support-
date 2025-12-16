@@ -1,10 +1,16 @@
 "use client";
 
-import type { Expense, Category, Reminder, AppSettings } from "./types";
+import type {
+  Expense,
+  Category,
+  Reminder,
+  AppSettings,
+  SavingsTransaction,
+} from "./types";
 import { startOfDay } from "date-fns";
 
 const DB_NAME = "VerdantViewDB";
-const DB_VERSION = 3; // Incremented version for recurring reminders
+const DB_VERSION = 4; // Incremented for savings transactions
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -72,6 +78,13 @@ function getDB(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains("settings")) {
           db.createObjectStore("settings", { keyPath: "id" });
         }
+        if (!db.objectStoreNames.contains("savings_transactions")) {
+          const savingsStore = db.createObjectStore("savings_transactions", {
+            keyPath: "id",
+            autoIncrement: true,
+          });
+          savingsStore.createIndex("date", "date", { unique: false });
+        }
       };
 
       request.onsuccess = (event) => {
@@ -123,7 +136,13 @@ async function populateInitialData(db: IDBDatabase): Promise<void> {
     settingsRequest.onsuccess = (e) => {
       const count = (e.target as IDBRequest).result;
       if (count === 0) {
-        settingsStore.add({ id: 1, monthlyBudget: 1000 });
+        settingsStore.add({
+          id: 1,
+          monthlyBudget: 1000,
+          emergencyFundGoal: 50000,
+          emergencyFundCurrent: 0,
+          userName: "Friend",
+        });
       }
       onCheckComplete();
     };
@@ -277,6 +296,19 @@ export const updateSettings = (
 ): Promise<IDBValidKey> =>
   performDBOperation("settings", "readwrite", (store) =>
     store.put({ ...settings, id: 1 })
+  );
+
+// Savings Transactions
+export const getSavingsTransactions = (): Promise<SavingsTransaction[]> =>
+  performDBOperation("savings_transactions", "readonly", (store) =>
+    store.getAll()
+  );
+
+export const addSavingsTransaction = (
+  transaction: Omit<SavingsTransaction, "id">
+): Promise<IDBValidKey> =>
+  performDBOperation("savings_transactions", "readwrite", (store) =>
+    store.add(transaction)
   );
 
 // Data Management
