@@ -440,98 +440,142 @@ export default function SettingsPage() {
           </h2>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Custom Categories</CardTitle>
+              <CardTitle className="text-base">Manage Categories</CardTitle>
               <CardDescription>
-                Add specialized categories to track your unique expenses.
+                Customize your expense categories to better track your spending
+                habits.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <Form {...categoryForm}>
-                <form
-                  onSubmit={categoryForm.handleSubmit(handleAddCategory)}
-                  className="flex gap-3"
-                >
-                  <FormField
-                    control={categoryForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem className="flex-grow space-y-0">
-                        <FormControl>
-                          <Input
-                            placeholder="e.g. Subscriptions, Hobbies"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    type="submit"
-                    variant="secondary"
-                    disabled={categoryForm.formState.isSubmitting}
+            <CardContent className="space-y-8">
+              {/* Add New Category */}
+              <div className="p-4 rounded-lg bg-muted/50 border border-border/50">
+                <Form {...categoryForm}>
+                  <form
+                    onSubmit={categoryForm.handleSubmit(handleAddCategory)}
+                    className="flex flex-col sm:flex-row gap-3 items-end sm:items-center"
                   >
-                    {categoryForm.formState.isSubmitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Plus className="h-4 w-4 mr-2" />
-                    )}
-                    Add Category
-                  </Button>
-                </form>
-              </Form>
-
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  Active Categories
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {categories.map((cat) => (
-                    <Badge
-                      key={cat.id}
-                      variant={
-                        defaultCategories.includes(cat.name)
-                          ? "outline"
-                          : "secondary"
-                      }
-                      className="px-3 py-1.5 text-sm font-normal gap-1"
-                    >
-                      {cat.name}
-                      {!defaultCategories.includes(cat.name) && cat.id && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <button className="ml-1 rounded-full p-0.5 hover:bg-destructive/20 hover:text-destructive transition-colors ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                              <X className="h-3 w-3" />
-                              <span className="sr-only">Delete</span>
-                            </button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Delete &quot;{cat.name}&quot;?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure? This category will be removed
-                                options, but existing expenses will remain.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() =>
-                                  cat.id &&
-                                  handleDeleteCategory(cat.id, cat.name)
-                                }
-                                className="bg-destructive hover:bg-destructive/90"
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                    <FormField
+                      control={categoryForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem className="flex-grow space-y-1.5 w-full">
+                          <FormLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Add New Category
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input
+                                placeholder="e.g. Subscriptions, Hobbies"
+                                className="bg-background"
+                                {...field}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                    </Badge>
-                  ))}
+                    />
+                    <Button
+                      type="submit"
+                      disabled={categoryForm.formState.isSubmitting}
+                      className="w-full sm:w-auto shrink-0"
+                    >
+                      {categoryForm.formState.isSubmitting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4 mr-2" />
+                      )}
+                      Add
+                    </Button>
+                  </form>
+                </Form>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* Default Categories Column */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b">
+                    <div className="h-2 w-2 rounded-full bg-primary/50" />
+                    <h4 className="text-sm font-medium">System Categories</h4>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {categories
+                      .filter((cat) => defaultCategories.includes(cat.name))
+                      .map((cat) => (
+                        <Badge
+                          key={cat.id || cat.name}
+                          variant="outline"
+                          className="px-3 py-1.5 text-sm font-normal bg-background/50 hover:bg-background cursor-default text-muted-foreground"
+                        >
+                          {cat.name}
+                        </Badge>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Custom Categories Column */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b">
+                    <div className="h-2 w-2 rounded-full bg-indigo-500" />
+                    <h4 className="text-sm font-medium">Your Categories</h4>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.filter(
+                      (cat) => !defaultCategories.includes(cat.name)
+                    ).length > 0 ? (
+                      categories
+                        .filter((cat) => !defaultCategories.includes(cat.name))
+                        .map((cat) => (
+                          <Badge
+                            key={cat.id}
+                            variant="secondary"
+                            className="pl-3 pr-1 py-1 text-sm font-medium gap-1 hover:bg-secondary/80 transition-all group"
+                          >
+                            {cat.name}
+                            {cat.id && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <button className="ml-1 rounded-full p-1 text-muted-foreground/50 hover:bg-destructive hover:text-destructive-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                                    <X className="h-3 w-3" />
+                                    <span className="sr-only">Delete</span>
+                                  </button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Delete &quot;{cat.name}&quot;?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure? This category will be
+                                      removed from selection options, but
+                                      existing expenses will remain.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>
+                                      Cancel
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() =>
+                                        cat.id &&
+                                        handleDeleteCategory(cat.id, cat.name)
+                                      }
+                                      className="bg-destructive hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </Badge>
+                        ))
+                    ) : (
+                      <div className="text-sm text-muted-foreground italic py-2">
+                        No custom categories added yet.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>

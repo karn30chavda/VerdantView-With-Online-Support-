@@ -3,17 +3,10 @@
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { getSettings, getReminders } from "@/lib/db";
-import { AppSettings, Reminder } from "@/lib/types";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Reminder } from "@/lib/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  IndianRupee,
   ArrowRight,
   TrendingUp,
   TrendingDown,
@@ -38,7 +31,6 @@ import {
 import { useExpenses } from "@/hooks/use-expenses";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 

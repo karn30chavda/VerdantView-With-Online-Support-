@@ -256,7 +256,7 @@ export default function RemindersPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 pb-24 min-h-screen">
+    <div className="flex flex-col gap-6 min-h-screen">
       {/* Header with Add Button */}
       <div className="flex items-center justify-between">
         <div>
@@ -279,9 +279,14 @@ export default function RemindersPage() {
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(handleAddReminder)}
+              <div
                 className="space-y-4"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    form.handleSubmit(handleAddReminder)();
+                  }
+                }}
               >
                 <FormField
                   control={form.control}
@@ -336,8 +341,11 @@ export default function RemindersPage() {
                             mode="single"
                             selected={field.value}
                             onSelect={(date) => {
-                              field.onChange(date);
-                              setIsDatePickerOpen(false);
+                              // Ensure we pass a value (handle undefined if needed, though user intent is select)
+                              if (date) {
+                                field.onChange(date);
+                                setIsDatePickerOpen(false);
+                              }
                             }}
                             initialFocus
                           />
@@ -403,7 +411,8 @@ export default function RemindersPage() {
 
                 <DialogFooter className="pt-4">
                   <Button
-                    type="submit"
+                    type="button"
+                    onClick={form.handleSubmit(handleAddReminder)}
                     disabled={form.formState.isSubmitting}
                     className="w-full"
                   >
@@ -414,7 +423,7 @@ export default function RemindersPage() {
                     )}
                   </Button>
                 </DialogFooter>
-              </form>
+              </div>
             </Form>
           </DialogContent>
         </Dialog>

@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 
 export default function NewExpensePage() {
   return (
-    <div className="flex items-center justify-center min-h-[80vh] px-4">
+    <div className="flex items-center justify-center min-h-[80vh]">
       <div className="w-full max-w-lg">
         <Suspense
           fallback={
