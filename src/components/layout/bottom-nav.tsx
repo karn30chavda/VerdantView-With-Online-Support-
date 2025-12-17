@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, PieChart, ScanLine, PiggyBank, Settings } from "lucide-react";
+import { Home, PieChart, PiggyBank, Settings, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function BottomNav() {
@@ -19,15 +19,16 @@ export function BottomNav() {
       label: "Stats",
       icon: PieChart,
     },
-    {
-      href: "/scan",
-      label: "Scan",
-      icon: ScanLine,
-    },
+
     {
       href: "/savings",
       label: "Savings",
       icon: PiggyBank,
+    },
+    {
+      href: "/groups",
+      label: "Groups",
+      icon: Users,
     },
     {
       href: "/settings",

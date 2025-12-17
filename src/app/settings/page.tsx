@@ -89,13 +89,6 @@ const categorySchema = z.object({
     .min(2, { message: "Category name must be at least 2 characters." }),
 });
 
-const nameSchema = z.object({
-  userName: z
-    .string()
-    .min(1, { message: "Name cannot be empty." })
-    .max(20, { message: "Name is too long." }),
-});
-
 const defaultCategories = [
   "Groceries",
   "Dining",
@@ -127,13 +120,6 @@ export default function SettingsPage() {
     },
   });
 
-  const nameForm = useForm<z.infer<typeof nameSchema>>({
-    resolver: zodResolver(nameSchema),
-    defaultValues: {
-      userName: "",
-    },
-  });
-
   const fetchData = async () => {
     const [fetchedSettings, fetchedCategories] = await Promise.all([
       getSettings(),
@@ -143,7 +129,6 @@ export default function SettingsPage() {
     setCategories(fetchedCategories);
     if (fetchedSettings) {
       budgetForm.reset({ monthlyBudget: fetchedSettings.monthlyBudget });
-      nameForm.reset({ userName: fetchedSettings.userName || "" });
     }
   };
 
@@ -159,16 +144,6 @@ export default function SettingsPage() {
       fetchData();
     } catch (error) {
       toast({ title: "Failed to update budget.", variant: "destructive" });
-    }
-  };
-
-  const handleUpdateName = async (values: z.infer<typeof nameSchema>) => {
-    try {
-      await updateSettings(values);
-      toast({ title: "Name updated successfully!" });
-      fetchData();
-    } catch (error) {
-      toast({ title: "Failed to update name.", variant: "destructive" });
     }
   };
 
@@ -402,55 +377,29 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-8">
+        {/* SECTION: ACCOUNT LINK */}
+        <Link href="/account">
+          <Card className="hover:bg-accent/50 transition-colors cursor-pointer border-indigo-500/50">
+            <CardContent className="flex items-center gap-4 p-6">
+              <div className="bg-indigo-100 p-3 rounded-full dark:bg-indigo-900/30">
+                <User className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Manage Account</CardTitle>
+                <CardDescription>
+                  Update your email, password, and security settings.
+                </CardDescription>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
         {/* SECTION: GENERAL PREFERENCES */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <User className="h-5 w-5" /> General Preferences
           </h2>
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Profile Name */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Profile Name</CardTitle>
-                <CardDescription>
-                  Your name as displayed on the dashboard.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Form {...nameForm}>
-                  <form
-                    onSubmit={nameForm.handleSubmit(handleUpdateName)}
-                    className="flex gap-3"
-                  >
-                    <FormField
-                      control={nameForm.control}
-                      name="userName"
-                      render={({ field }) => (
-                        <FormItem className="flex-grow space-y-0">
-                          <FormControl>
-                            <Input placeholder="Alex" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="submit"
-                      disabled={nameForm.formState.isSubmitting}
-                      size="icon"
-                      variant="default"
-                    >
-                      {nameForm.formState.isSubmitting ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Save className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-
             {/* Monthly Budget */}
             <Card>
               <CardHeader className="pb-3">
@@ -751,7 +700,8 @@ export default function SettingsPage() {
       </div>
 
       <div className="mt-12 text-center text-xs text-muted-foreground pb-8">
-        VerdantView v1.0.0 • Offline-First Personal Finance
+        VerdantView v1.0.0 • Offline-First Personal Finance • Online Group
+        Finance
       </div>
     </div>
   );

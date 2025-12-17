@@ -11,6 +11,7 @@ import {
   PiggyBank,
   Bell,
   Settings,
+  Users,
 } from "lucide-react";
 
 const navLinks = [
@@ -20,6 +21,7 @@ const navLinks = [
   { href: "/scan", label: "Scan", icon: ScanLine },
   { href: "/savings", label: "Savings", icon: PiggyBank },
   { href: "/reminders", label: "Reminders", icon: Bell },
+  { href: "/groups", label: "Groups", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -9,17 +9,9 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { Toaster } from "@/components/ui/toaster";
 import { useEffect } from "react";
 import { clearOldReminders } from "@/lib/db";
+import { UserSync } from "@/components/layout/user-sync";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-
-// Metadata can't be dynamically generated in a client component,
-// so we'll define it statically here. For dynamic metadata,
-// you would need a different approach.
-// export const metadata: Metadata = {
-//   title: 'VerdantView',
-//   description: 'Your personal expense tracker, offline-first and AI-powered.',
-//   manifest: '/manifest.json',
-// };
 
 export default function RootLayout({
   children,
@@ -60,27 +52,30 @@ export default function RootLayout({
   }, []);
 
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-        <title>VerdantView</title>
-        <meta
-          name="description"
-          content="Your personal expense tracker, offline-first and AI-powered."
-        />
-      </head>
-      <body className={`font-body antialiased ${inter.variable}`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <div className="relative flex min-h-screen w-full flex-col">
-            <Header />
-            <main className="flex-1 p-4 pb-20 sm:p-6 sm:pb-20 md:p-8 md:pb-20 lg:pb-8">
-              {children}
-            </main>
-            <BottomNav />
-          </div>
-          <Toaster />
-        </ThemeProvider>
-      </body>
-    </html>
+    <ClerkProvider>
+      <UserSync />
+      <html lang="en" suppressHydrationWarning>
+        <head>
+          <link rel="manifest" href="/manifest.json" />
+          <title>VerdantView</title>
+          <meta
+            name="description"
+            content="Your personal expense tracker, offline-first and AI-powered."
+          />
+        </head>
+        <body className={`font-body antialiased ${inter.variable}`}>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <div className="relative flex min-h-screen w-full flex-col">
+              <Header />
+              <main className="flex-1 p-4 pb-20 sm:p-6 sm:pb-20 md:p-8 md:pb-20 lg:pb-8">
+                {children}
+              </main>
+              <BottomNav />
+            </div>
+            <Toaster />
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
