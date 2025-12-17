@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 import { getSettings, getReminders } from "@/lib/db";
 import { Reminder } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,10 +36,11 @@ import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 
 export default function DashboardPage() {
+  const { user } = useUser(); // Get user from Clerk
   const { expenses, summaries, loading, error } = useExpenses();
   const [timeRange, setTimeRange] = useState("all"); // Default to all
-  const [userName, setUserName] = useState<string>("User");
   const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
+  const [userName, setUserName] = useState<string>("");
   const [reminders, setReminders] = useState<Reminder[]>([]);
 
   useEffect(() => {
@@ -49,6 +51,7 @@ export default function DashboardPage() {
           getReminders(),
         ]);
 
+        // Set userName and budget from settings
         if (settings?.userName) {
           setUserName(settings.userName);
         }
@@ -166,7 +169,9 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-6 pb-20">
       {/* Header Section */}
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold">Hello, {userName}!</h1>
+        <h1 className="text-2xl font-bold">
+          Hello, {userName || user?.firstName || "User"}!
+        </h1>
         <p className="text-muted-foreground">Track your transactions today</p>
       </div>
 
