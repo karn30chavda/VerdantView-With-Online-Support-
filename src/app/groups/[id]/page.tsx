@@ -665,7 +665,7 @@ export default function GroupDetailsPage({
                 return (
                   <Card
                     key={expense.id}
-                    className="overflow-hidden border shadow-sm hover:shadow-md transition-all duration-200"
+                    className="border shadow-sm hover:shadow-md transition-all duration-200"
                   >
                     <CardContent className="p-5">
                       {editingExpenseId === expense.id ? (
@@ -813,7 +813,7 @@ export default function GroupDetailsPage({
                                 </span>
                               </Button>
                               {getReactionUsers(expense, "like").length > 0 && (
-                                <div className="absolute top-full mt-2 left-0 hidden group-hover:block bg-white dark:bg-gray-800 border rounded-md shadow-lg px-3 py-2 z-20">
+                                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 hidden group-hover:block bg-white dark:bg-gray-800 border rounded-md shadow-lg px-3 py-2 z-50">
                                   <div className="text-xs space-y-1 whitespace-nowrap">
                                     {getReactionUsers(expense, "like").map(
                                       (name, i) => (
@@ -858,7 +858,7 @@ export default function GroupDetailsPage({
                               </Button>
                               {getReactionUsers(expense, "dislike").length >
                                 0 && (
-                                <div className="absolute top-full mt-2 left-0 hidden group-hover:block bg-white dark:bg-gray-800 border rounded-md shadow-lg px-3 py-2 z-20">
+                                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 hidden group-hover:block bg-white dark:bg-gray-800 border rounded-md shadow-lg px-3 py-2 z-50">
                                   <div className="text-xs space-y-1 whitespace-nowrap">
                                     {getReactionUsers(expense, "dislike").map(
                                       (name, i) => (
@@ -903,7 +903,7 @@ export default function GroupDetailsPage({
                               </Button>
                               {getReactionUsers(expense, "neutral").length >
                                 0 && (
-                                <div className="absolute top-full mt-2 left-0 hidden group-hover:block bg-white dark:bg-gray-800 border rounded-md shadow-lg px-3 py-2 z-20">
+                                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 hidden group-hover:block bg-white dark:bg-gray-800 border rounded-md shadow-lg px-3 py-2 z-50">
                                   <div className="text-xs space-y-1 whitespace-nowrap">
                                     {getReactionUsers(expense, "neutral").map(
                                       (name, i) => (
