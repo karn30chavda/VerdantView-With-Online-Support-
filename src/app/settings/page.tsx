@@ -40,6 +40,7 @@ import {
 } from "@/lib/db";
 import type { AppSettings, Category } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 import {
   Loader2,
   Trash2,
@@ -105,6 +106,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const { toast } = useToast();
+  const isOnline = useOnlineStatus();
 
   const budgetForm = useForm<z.infer<typeof budgetSchema>>({
     resolver: zodResolver(budgetSchema),
@@ -378,21 +380,23 @@ export default function SettingsPage() {
 
       <div className="grid gap-8">
         {/* SECTION: ACCOUNT LINK */}
-        <Link href="/account">
-          <Card className="hover:bg-accent/50 transition-colors cursor-pointer border-indigo-500/50">
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="bg-indigo-100 p-3 rounded-full dark:bg-indigo-900/30">
-                <User className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">Manage Account</CardTitle>
-                <CardDescription>
-                  Update your email, password, and security settings.
-                </CardDescription>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+        {isOnline && (
+          <Link href="/account">
+            <Card className="hover:bg-accent/50 transition-colors cursor-pointer border-indigo-500/50">
+              <CardContent className="flex items-center gap-4 p-6">
+                <div className="bg-indigo-100 p-3 rounded-full dark:bg-indigo-900/30">
+                  <User className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Manage Account</CardTitle>
+                  <CardDescription>
+                    Update your email, password, and security settings.
+                  </CardDescription>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
 
         {/* SECTION: GENERAL PREFERENCES */}
         <div className="space-y-4">

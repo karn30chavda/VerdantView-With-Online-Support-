@@ -24,6 +24,13 @@ import {
   Check,
   Target,
   Calendar,
+  Video,
+  Phone,
+  Smile,
+  Paperclip,
+  Camera,
+  Mic,
+  SendIcon,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -63,6 +70,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -206,6 +214,7 @@ export default function GroupDetailsPage({
 
   // Admin Forms
   const [editGroupName, setEditGroupName] = useState("");
+  const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-IN", {
@@ -253,40 +262,10 @@ export default function GroupDetailsPage({
       setGroup(groupData);
       setEditGroupName(groupData.name);
 
-      const { data: membersData, error: membersError } = await supabase
-        .from("group_members")
-        .select("*")
-        .eq("group_id", groupId);
-      if (membersError) throw membersError;
-      setMembers(membersData);
-
-      const currentUserMember = membersData.find(
-        (m: any) => m.user_id === user?.id
-      );
-      setIsAdmin(currentUserMember?.role === "admin");
-
+      fetchMembers();
       fetchExpenses();
-
-      const { data: msgsData, error: msgsError } = await supabase
-        .from("group_messages")
-        .select("*")
-        .eq("group_id", groupId)
-        .order("created_at", { ascending: true });
-
-      if (!msgsError) {
-        setMessages(msgsData as ChatMessage[]);
-      }
-
-      // Fetch goals with contributions
-      const { data: goalsData, error: goalsError } = await supabase
-        .from("group_goals")
-        .select("*, goal_contributions(*)")
-        .eq("group_id", groupId)
-        .order("created_at", { ascending: false });
-
-      if (!goalsError && goalsData) {
-        setGoals(goalsData as GroupGoal[]);
-      }
+      fetchMessages();
+      fetchGoals();
     } catch (error: any) {
       console.error(error);
       toast({
@@ -312,6 +291,47 @@ export default function GroupDetailsPage({
     }
   }
 
+  async function fetchMessages() {
+    if (!user) return;
+    const { data: msgsData, error: msgsError } = await supabase
+      .from("group_messages")
+      .select("*")
+      .eq("group_id", groupId)
+      .order("created_at", { ascending: true });
+
+    if (!msgsError) {
+      setMessages(msgsData as ChatMessage[]);
+    }
+  }
+
+  async function fetchMembers() {
+    if (!user) return;
+    const { data: membersData, error: membersError } = await supabase
+      .from("group_members")
+      .select("*")
+      .eq("group_id", groupId);
+    if (!membersError && membersData) {
+      setMembers(membersData);
+      const currentUserMember = membersData.find(
+        (m: any) => m.user_id === user?.id
+      );
+      setIsAdmin(currentUserMember?.role === "admin");
+    }
+  }
+
+  async function fetchGoals() {
+    if (!user) return;
+    const { data: goalsData, error: goalsError } = await supabase
+      .from("group_goals")
+      .select("*, goal_contributions(*)")
+      .eq("group_id", groupId)
+      .order("created_at", { ascending: false });
+
+    if (!goalsError && goalsData) {
+      setGoals(goalsData as GroupGoal[]);
+    }
+  }
+
   useEffect(() => {
     if (!groupId) return;
 
@@ -322,14 +342,12 @@ export default function GroupDetailsPage({
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "group_messages",
           filter: `group_id=eq.${groupId}`,
         },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as ChatMessage]);
-        }
+        () => fetchMessages()
       )
       .on(
         "postgres_changes",
@@ -343,8 +361,33 @@ export default function GroupDetailsPage({
       )
       .on(
         "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "group_members",
+          filter: `group_id=eq.${groupId}`,
+        },
+        () => fetchMembers()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "group_goals",
+          filter: `group_id=eq.${groupId}`,
+        },
+        () => fetchGoals()
+      )
+      .on(
+        "postgres_changes",
         { event: "*", schema: "public", table: "expense_reactions" },
         () => fetchExpenses()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "goal_contributions" },
+        () => fetchGoals()
       )
       .subscribe();
 
@@ -404,6 +447,7 @@ export default function GroupDetailsPage({
       setNewExpenseTitle("");
       setNewExpenseAmount("");
       setIsExpenseDialogOpen(false);
+      fetchExpenses(); // Refresh expenses immediately
     }
   };
 
@@ -427,6 +471,7 @@ export default function GroupDetailsPage({
     } else {
       toast({ title: "Expense updated!" });
       setEditingExpenseId(null);
+      fetchExpenses(); // Refresh expenses immediately
     }
   };
 
@@ -499,6 +544,7 @@ export default function GroupDetailsPage({
 
       if (error) throw error;
       toast({ title: "Group name updated" });
+      setGroup((prev: any) => ({ ...prev, name: editGroupName })); // Update local state immediately
       fetchGroupDetails();
     } catch (error: any) {
       toast({
@@ -519,6 +565,7 @@ export default function GroupDetailsPage({
       if (error) throw error;
       toast({ title: "Group deleted" });
       router.push("/groups");
+      router.refresh(); // Ensure the groups list is fresh
     } catch (error: any) {
       toast({
         title: "Delete failed",
@@ -602,12 +649,38 @@ export default function GroupDetailsPage({
 
       toast({ title: `Contributed ₹${amount}!` });
 
+      // Update local state immediately (Optimistic Update)
+      setGoals((prevGoals) =>
+        prevGoals.map((g) => {
+          if (g.id === contributingGoalId) {
+            const newContribution: GoalContribution = {
+              id: Math.random().toString(), // Temporary ID
+              goal_id: contributingGoalId,
+              user_id: user.id,
+              user_name: user.fullName || user.firstName || "User",
+              amount: amount,
+              note: contributionNote || undefined,
+              contributed_at: new Date().toISOString(),
+            };
+            return {
+              ...g,
+              current_amount: g.current_amount + amount,
+              goal_contributions: [
+                newContribution,
+                ...(g.goal_contributions || []),
+              ],
+            };
+          }
+          return g;
+        })
+      );
+
       // Reset form
       setContributionAmount("");
       setContributionNote("");
       setContributingGoalId(null);
 
-      // Refresh goals
+      // Refresh goals from server to sync with database
       const { data: goalsData } = await supabase
         .from("group_goals")
         .select("*, goal_contributions(*)")
@@ -653,17 +726,15 @@ export default function GroupDetailsPage({
     messageId: string,
     messageOwnerId: string
   ) => {
-    // Check permission: admin or message owner
-    if (!isAdmin && messageOwnerId !== user?.id) {
+    // Check permission: only message owner
+    if (messageOwnerId !== user?.id) {
       toast({
         title: "Permission denied",
-        description: "Only admins or message owners can delete messages",
+        description: "Only message owners can delete their own messages",
         variant: "destructive",
       });
       return;
     }
-
-    if (!confirm("Delete this message?")) return;
 
     try {
       const { error } = await supabase
@@ -691,15 +762,6 @@ export default function GroupDetailsPage({
 
   const handleDeleteSelectedMessages = async () => {
     if (selectedMessages.size === 0) return;
-
-    if (
-      !confirm(
-        `Delete ${selectedMessages.size} message${
-          selectedMessages.size > 1 ? "s" : ""
-        }?`
-      )
-    )
-      return;
 
     try {
       const messagesToDelete = Array.from(selectedMessages);
@@ -730,6 +792,11 @@ export default function GroupDetailsPage({
   };
 
   const toggleMessageSelection = (messageId: string) => {
+    const message = messages.find((m) => m.id === messageId);
+    if (message?.user_id !== user?.id) {
+      return;
+    }
+
     setSelectedMessages((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(messageId)) {
@@ -742,6 +809,9 @@ export default function GroupDetailsPage({
   };
 
   const handleMessageLongPress = (messageId: string) => {
+    const message = messages.find((m) => m.id === messageId);
+    if (message?.user_id !== user?.id) return;
+
     setIsSelectMode(true);
     setSelectedMessages(new Set([messageId]));
   };
@@ -761,6 +831,7 @@ export default function GroupDetailsPage({
 
       if (error) throw error;
       toast({ title: "Member removed" });
+      setMembers((prev) => prev.filter((m) => m.id !== memberId)); // Update local state immediately
       fetchGroupDetails();
     } catch (error: any) {
       toast({
@@ -1518,81 +1589,215 @@ export default function GroupDetailsPage({
         </TabsContent>
 
         <TabsContent value="chat" className="mt-6">
-          <Card className="h-[600px] flex flex-col shadow-lg overflow-hidden">
+          <Card className="h-[750px] flex flex-col shadow-2xl overflow-hidden border-none bg-[#0b141a] rounded-xl">
             {/* Chat Header */}
             <CardHeader
               className={cn(
-                "py-3 px-4 border-b transition-colors",
+                "py-3 px-4 border-b border-black/5 dark:border-white/5 transition-colors z-10",
                 isSelectMode
-                  ? "bg-gray-700 text-white"
-                  : "bg-slate-100 dark:bg-slate-800"
+                  ? "bg-[#005c4b] text-white"
+                  : "bg-[#f0f2f5] dark:bg-[#202c33] text-slate-900 dark:text-white"
               )}
             >
-              <div className="flex items-center gap-3">
-                {isSelectMode ? (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCancelSelection}
-                      className="text-white hover:bg-gray-600"
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {isSelectMode ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancelSelection}
+                        className="text-white hover:bg-white/10"
+                      >
+                        <Plus className="h-5 w-5 rotate-45" />
+                      </Button>
+                      <div className="flex-1 text-white font-semibold flex items-center gap-2">
+                        <span>{selectedMessages.size}</span>
+                        <span className="text-sm font-normal text-white/70">
+                          selected
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <Avatar className="h-10 w-10 border border-black/10 dark:border-white/10">
+                          <AvatarFallback className="bg-[#4a5568] text-white font-bold">
+                            {group?.name?.[0]?.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 border-2 border-white dark:border-[#202c33] rounded-full"></div>
+                      </div>
+                      <div className="flex flex-col">
+                        <CardTitle className="text-base font-semibold">
+                          {group?.name}
+                        </CardTitle>
+                        <CardDescription className="text-[11px] text-slate-500 dark:text-[#8696a0] flex items-center gap-1">
+                          {members
+                            .map((m) => m.member_name)
+                            .join(", ")
+                            .substring(0, 30)}
+                          ...
+                        </CardDescription>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {!isSelectMode ? (
+                  <div className="flex items-center gap-1">
+                    <Dialog
+                      open={isGroupInfoOpen}
+                      onOpenChange={setIsGroupInfoOpen}
                     >
-                      Cancel
-                    </Button>
-                    <div className="flex-1 text-white font-semibold">
-                      {selectedMessages.size} selected
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleDeleteSelectedMessages}
-                      className="text-red-300 hover:bg-gray-600 hover:text-red-200"
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
-                  </>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-slate-500 dark:text-[#aebac1] hover:bg-black/5 dark:hover:bg-white/5 rounded-full"
+                        >
+                          <MoreVertical className="h-5 w-5" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md bg-background border-none shadow-2xl rounded-2xl">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-2 text-xl">
+                            <Users className="h-6 w-6 text-blue-500" />
+                            Group Info
+                          </DialogTitle>
+                          <DialogDescription className="text-left pt-2">
+                            See all members and group details.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-6 py-4">
+                          <div className="flex flex-col items-center gap-3">
+                            <Avatar className="h-20 w-20 border-4 border-blue-500/20">
+                              <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold">
+                                {group?.name?.[0]?.toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <h2 className="text-2xl font-bold">
+                              {group?.name}
+                            </h2>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              Created{" "}
+                              {format(
+                                new Date(group?.created_at || new Date()),
+                                "MMM d, yyyy"
+                              )}
+                            </p>
+                          </div>
+
+                          <Separator />
+
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                                Members ({members.length})
+                              </h3>
+                            </div>
+                            <div className="grid gap-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
+                              {members.map((member) => (
+                                <div
+                                  key={member.id}
+                                  className="flex items-center justify-between p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <Avatar className="h-10 w-10 border-2 border-background">
+                                      <AvatarFallback className="bg-gradient-to-tr from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 font-medium">
+                                        {member.member_name[0]?.toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="font-semibold text-sm">
+                                        {member.member_name}
+                                      </p>
+                                      <p className="text-[10px] text-muted-foreground uppercase tracking-tight">
+                                        {member.role}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  {member.user_id === user?.id && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-[10px] h-5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-none"
+                                    >
+                                      You
+                                    </Badge>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 ) : (
-                  <>
-                    <Avatar className="h-10 w-10 border-2 border-slate-300 dark:border-slate-600">
-                      <AvatarFallback className="bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold">
-                        {group?.name?.[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <CardTitle className="text-base font-semibold text-slate-800 dark:text-slate-100">
-                        {group?.name}
-                      </CardTitle>
-                      <CardDescription className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        {members.length} members
-                      </CardDescription>
-                    </div>
-                  </>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-white hover:bg-white/10"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Messages?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete{" "}
+                          {selectedMessages.size} message
+                          {selectedMessages.size > 1 ? "s" : ""}? This action
+                          cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDeleteSelectedMessages}
+                          className="bg-red-500 hover:bg-red-600 text-white border-none shadow-none"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
               </div>
             </CardHeader>
 
             {/* Chat Background */}
-            <CardContent
-              className="flex-1 p-0 relative overflow-hidden bg-slate-800 dark:bg-slate-950"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23475569' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-              }}
-            >
+            <CardContent className="flex-1 p-0 relative overflow-hidden bg-[#e5ddd5] dark:bg-[#0b141a]">
               <div
                 ref={scrollRef}
-                className="absolute inset-0 overflow-y-auto p-4 space-y-3"
+                className="absolute inset-0 overflow-y-auto p-4 space-y-2 scrollbar-hide"
               >
                 {messages.length === 0 && (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-                    <div className="bg-white/80 dark:bg-card/80 backdrop-blur-sm rounded-xl p-8 shadow-lg">
-                      <MessageCircle className="h-16 w-16 mb-4 mx-auto text-slate-400" />
-                      <p className="text-sm font-medium">No messages yet</p>
-                      <p className="text-xs text-muted-foreground/60 mt-1">
-                        Start the conversation!
+                  <div className="flex flex-col items-center justify-center h-full text-[#8696a0]">
+                    <div className="bg-[#202c33] rounded-2xl p-8 shadow-xl border border-white/5 text-center max-w-xs">
+                      <div className="h-20 w-20 bg-[#00a884]/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-[#00a884]/20">
+                        <MessageCircle className="h-10 w-10 text-[#00a884]" />
+                      </div>
+                      <h3 className="text-[#e9edef] font-semibold mb-2 text-lg">
+                        Send a message
+                      </h3>
+                      <p className="text-sm">
+                        Messages are secured with end-to-end encryption in your
+                        session.
                       </p>
                     </div>
+                  </div>
+                )}
+
+                {/* Today Separator */}
+                {messages.length > 0 && (
+                  <div className="flex justify-center my-4">
+                    <span className="bg-[#182229] text-[#8696a0] text-[11px] px-3 py-1 rounded-md shadow-sm border border-white/5 uppercase tracking-wider font-medium">
+                      Today
+                    </span>
                   </div>
                 )}
 
@@ -1600,16 +1805,17 @@ export default function GroupDetailsPage({
                   const isMe = msg.user_id === user?.id;
                   const showAvatar =
                     index === 0 || messages[index - 1].user_id !== msg.user_id;
-                  const canDelete = isAdmin || isMe;
-                  const showName = !isMe && showAvatar;
                   const isSelected = selectedMessages.has(msg.id);
+                  const isFirstInSequence =
+                    index === 0 || messages[index - 1].user_id !== msg.user_id;
 
                   return (
                     <div
                       key={msg.id}
                       className={cn(
-                        "flex w-full gap-2 items-end transition-all",
-                        isMe ? "justify-end" : "justify-start"
+                        "flex w-full gap-2 items-end group transition-all duration-200",
+                        isMe ? "justify-end" : "justify-start",
+                        isSelected && "bg-[#005c4b]/20"
                       )}
                       onMouseDown={() => {
                         if (isSelectMode) {
@@ -1648,111 +1854,87 @@ export default function GroupDetailsPage({
                         }
                       }}
                     >
-                      {/* Selection Checkbox (left side for received, right side for sent) */}
-                      {isSelectMode && !isMe && (
-                        <div className="flex items-center mb-1">
-                          <div
-                            className={cn(
-                              "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer",
-                              isSelected
-                                ? "bg-blue-500 border-blue-500"
-                                : "bg-white border-gray-400"
-                            )}
-                            onClick={() => toggleMessageSelection(msg.id)}
-                          >
-                            {isSelected && (
-                              <Check className="h-3 w-3 text-white" />
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Avatar for others */}
-                      {!isMe && !isSelectMode && (
-                        <div className="w-8 flex-shrink-0 mb-1">
-                          {showAvatar ? (
-                            <Avatar className="h-8 w-8 border-2 border-white shadow-sm">
-                              <AvatarFallback className="text-[10px] bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold">
-                                {msg.user_name[0]?.toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                          ) : (
-                            <div className="w-8" />
-                          )}
-                        </div>
-                      )}
-
                       <div
                         className={cn(
-                          "flex flex-col max-w-[75%]",
+                          "flex flex-col max-w-[85%] sm:max-w-[70%] relative",
                           isMe ? "items-end" : "items-start"
                         )}
                       >
-                        <div className="relative group">
-                          {/* Message Bubble - Telegram Style */}
-                          <div
-                            className={cn(
-                              "px-3 py-2 rounded-lg shadow-sm relative transition-all",
-                              isMe
-                                ? "bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100"
-                                : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100",
-                              isSelected && "ring-2 ring-blue-500"
-                            )}
-                            style={{
-                              borderTopLeftRadius:
-                                !isMe && showAvatar ? "4px" : undefined,
-                              borderTopRightRadius:
-                                isMe && showAvatar ? "4px" : undefined,
-                            }}
-                          >
-                            {/* Sender name (only for others) */}
-                            {showName && (
-                              <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
-                                {msg.user_name}
-                              </p>
-                            )}
+                        {/* Bubble */}
+                        <div
+                          className={cn(
+                            "px-2.5 py-1.5 rounded-lg shadow-sm relative group",
+                            isMe
+                              ? "bg-[#dcf8c6] dark:bg-[#005c97] text-slate-900 dark:text-white rounded-tr-none"
+                              : "bg-white dark:bg-[#202c33] text-slate-900 dark:text-[#e9edef] rounded-tl-none",
+                            isSelected && "ring-2 ring-[#00a884]"
+                          )}
+                          style={{
+                            marginTop: isFirstInSequence ? "8px" : "2px",
+                          }}
+                        >
+                          {/* Triangle Tip */}
+                          {isFirstInSequence && (
+                            <div
+                              className={cn(
+                                "absolute top-0 w-3 h-3 overflow-hidden",
+                                isMe ? "-right-2" : "-left-2"
+                              )}
+                            >
+                              <div
+                                className={cn(
+                                  "w-3 h-3 rotate-45 transform origin-top",
+                                  isMe
+                                    ? "bg-[#dcf8c6] dark:bg-[#005c97] -translate-x-1.5 shadow-sm"
+                                    : "bg-white dark:bg-[#202c33] translate-x-1.5 shadow-sm"
+                                )}
+                              ></div>
+                            </div>
+                          )}
 
-                            {/* Message content */}
-                            <p className="text-sm leading-relaxed break-words">
+                          {!isMe && isFirstInSequence && (
+                            <p className="text-[11px] font-bold text-blue-400 mb-0.5 px-0.5">
+                              {msg.user_name}
+                            </p>
+                          )}
+
+                          <div className="flex flex-wrap items-end gap-x-2 gap-y-0 min-w-[60px]">
+                            <p className="text-[14.5px] leading-[19px] break-words flex-1 px-0.5 py-0.5">
                               {msg.content}
                             </p>
-
-                            {/* Timestamp */}
-                            <div className="flex items-center gap-1 justify-end mt-1">
-                              <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                                {format(new Date(msg.created_at), "HH:mm")}
+                            <div className="flex items-center gap-1 ml-auto pt-1 pb-0.5">
+                              <span className="text-[10px] text-slate-500/80 dark:text-[#8696a0] font-medium uppercase">
+                                {format(new Date(msg.created_at), "h:mm a")}
                               </span>
-                              {/* Check marks for sent messages */}
                               {isMe && (
-                                <Check className="h-3 w-3 text-slate-400" />
+                                <div className="flex -space-x-1">
+                                  <Check className="h-3.5 w-3.5 text-[#4fc3f7] dark:text-blue-400" />
+                                </div>
                               )}
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Selection Checkbox (right side for sent messages) */}
+                      {/* Selection Badge for me */}
                       {isSelectMode && isMe && (
-                        <div className="flex items-center mb-1">
+                        <div className="flex items-center self-center pl-2">
                           <div
                             className={cn(
-                              "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer",
+                              "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all",
                               isSelected
-                                ? "bg-blue-500 border-blue-500"
-                                : "bg-white border-gray-400"
+                                ? "bg-[#00a884] border-[#00a884]"
+                                : "border-[#8696a0]"
                             )}
-                            onClick={() => toggleMessageSelection(msg.id)}
                           >
                             {isSelected && (
-                              <Check className="h-3 w-3 text-white" />
+                              <Check
+                                className="h-3 w-3 text-white"
+                                strokeWidth={4}
+                              />
                             )}
                           </div>
                         </div>
-                      )}
-
-                      {/* Spacer for own messages (when not in select mode) */}
-                      {isMe && !isSelectMode && (
-                        <div className="w-8 flex-shrink-0" />
                       )}
                     </div>
                   );
@@ -1761,34 +1943,40 @@ export default function GroupDetailsPage({
             </CardContent>
 
             {/* Chat Input Area */}
-            <div className="p-3 bg-gray-100 dark:bg-gray-900 border-t">
-              <div className="flex gap-2 items-center">
-                <div className="flex-1 bg-white dark:bg-card rounded-full border shadow-sm flex items-center px-4 py-2 focus-within:ring-2 ring-blue-500/30 transition-all">
-                  <Input
-                    placeholder="Type a message"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && !e.shiftKey && handleSendMessage()
-                    }
-                    className="border-none shadow-none bg-transparent focus-visible:ring-0 px-0 text-sm"
-                    disabled={!isOnline}
-                  />
-                </div>
-                <Button
-                  size="icon"
-                  onClick={handleSendMessage}
-                  disabled={isSendingMessage || !newMessage.trim() || !isOnline}
-                  className={cn(
-                    "h-11 w-11 rounded-full shadow-md transition-all",
-                    newMessage.trim() && isOnline
-                      ? "bg-blue-600 hover:bg-blue-700"
-                      : "bg-muted text-muted-foreground hover:bg-muted cursor-not-allowed"
-                  )}
-                >
-                  <Send className="h-5 w-5" />
-                </Button>
+            <div className="p-2 bg-[#f0f2f5] dark:bg-[#0b141a] flex items-center gap-2">
+              <div className="flex-1 flex items-center bg-white dark:bg-[#2a3942] rounded-[24px] px-4 py-1 border border-black/5 dark:border-white/5 transition-all shadow-sm">
+                <Input
+                  placeholder="Message"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && !e.shiftKey && handleSendMessage()
+                  }
+                  className="border-none shadow-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 px-0 text-slate-900 dark:text-[#e9edef] text-[16px] placeholder:text-[#8696a0] h-11 flex-1"
+                  disabled={!isOnline}
+                />
               </div>
+
+              <Button
+                onClick={() => handleSendMessage()}
+                disabled={
+                  !isOnline ||
+                  (!newMessage.trim() && !isSendingMessage) ||
+                  isSendingMessage
+                }
+                className={cn(
+                  "rounded-full h-12 w-12 flex items-center justify-center shadow-lg transition-all shrink-0",
+                  newMessage.trim()
+                    ? "bg-[#00a884] hover:bg-[#008f72] text-white"
+                    : "bg-[#dee2e6] dark:bg-[#202c33] text-slate-500 dark:text-[#8696a0]"
+                )}
+              >
+                {newMessage.trim() ? (
+                  <SendIcon className="h-5 w-5 ml-0.5" />
+                ) : (
+                  <SendIcon className="h-6 w-6" />
+                )}
+              </Button>
             </div>
           </Card>
         </TabsContent>
@@ -1839,7 +2027,7 @@ export default function GroupDetailsPage({
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => handleRemoveMember(member.id)}
-                            className="bg-destructive"
+                            className="bg-red-500 hover:bg-red-600 text-white border-none shadow-none"
                           >
                             Remove
                           </AlertDialogAction>

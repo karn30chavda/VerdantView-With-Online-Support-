@@ -20,11 +20,15 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { useOnlineStatus } from "@/hooks/use-online-status";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { WifiOff } from "lucide-react";
 
 export default function AccountPage() {
   const { user, isLoaded } = useUser();
   const { signOut, openUserProfile } = useClerk();
   const { toast } = useToast();
+  const isOnline = useOnlineStatus();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -82,6 +86,19 @@ export default function AccountPage() {
         </div>
       </div>
 
+      {!isOnline && (
+        <Alert className="border-orange-500/50 bg-orange-50 dark:bg-orange-950/20">
+          <WifiOff className="h-4 w-4 text-orange-600" />
+          <AlertTitle className="text-orange-900 dark:text-orange-100">
+            Offline Mode
+          </AlertTitle>
+          <AlertDescription className="text-orange-800 dark:text-orange-200">
+            You are currently offline. Account management requires an active
+            internet connection.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card className="overflow-hidden border-none shadow-sm bg-background">
         <CardContent className="p-0 space-y-8">
           <Separator />
@@ -111,7 +128,10 @@ export default function AccountPage() {
               </div>
             </div>
             <div className="flex justify-end pt-2">
-              <Button onClick={handleUpdateProfile} disabled={isUpdating}>
+              <Button
+                onClick={handleUpdateProfile}
+                disabled={isUpdating || !isOnline}
+              >
                 {isUpdating && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
@@ -135,7 +155,11 @@ export default function AccountPage() {
                   Manage your password and 2FA settings.
                 </p>
               </div>
-              <Button variant="outline" onClick={() => openUserProfile()}>
+              <Button
+                variant="outline"
+                onClick={() => openUserProfile()}
+                disabled={!isOnline}
+              >
                 <SettingsIcon className="mr-2 h-4 w-4" />
                 Manage
               </Button>
