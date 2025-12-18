@@ -31,6 +31,7 @@ import {
   Camera,
   Mic,
   SendIcon,
+  RotateCw,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -299,8 +300,26 @@ export default function GroupDetailsPage({
       .eq("group_id", groupId)
       .order("created_at", { ascending: true });
 
-    if (!msgsError) {
+    if (!msgsError && msgsData) {
       setMessages(msgsData as ChatMessage[]);
+
+      // Update local cache
+      const cached = localStorage.getItem(`group_details_${groupId}`);
+      if (cached) {
+        try {
+          const data = JSON.parse(cached);
+          localStorage.setItem(
+            `group_details_${groupId}`,
+            JSON.stringify({
+              ...data,
+              messages: msgsData,
+              cachedAt: Date.now(),
+            })
+          );
+        } catch (e) {
+          console.error("Cache update failed", e);
+        }
+      }
     }
   }
 
@@ -397,28 +416,68 @@ export default function GroupDetailsPage({
   }, [groupId, user]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    const scrollToBottom = () => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    };
+
+    // Scroll immediately
+    scrollToBottom();
+    // Scroll again after a small delay to handle rendering lag
+    const timer = setTimeout(scrollToBottom, 50);
+    return () => clearTimeout(timer);
   }, [messages]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !user) return;
     setIsSendingMessage(true);
 
-    const { error } = await supabase.from("group_messages").insert({
-      group_id: groupId,
-      user_id: user.id,
-      user_name: user.fullName || "Member",
-      content: newMessage.trim(),
-    });
+    const messageContent = newMessage.trim();
+    setNewMessage(""); // Clear early for better UX
 
-    if (error) {
-      toast({ title: "Failed to send", variant: "destructive" });
-    } else {
-      setNewMessage("");
+    const optimisticMessage: ChatMessage = {
+      id: "temp-" + Date.now(),
+      user_id: user.id,
+      user_name: user.fullName || user.firstName || "You",
+      content: messageContent,
+      created_at: new Date().toISOString(),
+    };
+
+    // Optimistically add to UI
+    setMessages((prev) => [...prev, optimisticMessage]);
+
+    try {
+      const { error } = await supabase.from("group_messages").insert({
+        group_id: groupId,
+        user_id: user.id,
+        user_name: user.fullName || user.firstName || "Member",
+        content: messageContent,
+      });
+
+      if (error) {
+        // Remove optimistic message on error
+        setMessages((prev) =>
+          prev.filter((m) => m.id !== optimisticMessage.id)
+        );
+        throw error;
+      }
+
+      // Small delay before fetching to ensure DB consistency
+      setTimeout(async () => {
+        await fetchMessages();
+      }, 500);
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        title: "Failed to send",
+        description: error.message,
+        variant: "destructive",
+      });
+      setNewMessage(messageContent); // Restore input
+    } finally {
+      setIsSendingMessage(false);
     }
-    setIsSendingMessage(false);
   };
 
   const handleCreateExpense = async () => {
@@ -726,11 +785,12 @@ export default function GroupDetailsPage({
     messageId: string,
     messageOwnerId: string
   ) => {
-    // Check permission: only message owner
-    if (messageOwnerId !== user?.id) {
+    // Check permission: only message owner or admin
+    if (messageOwnerId !== user?.id && !isAdmin) {
       toast({
         title: "Permission denied",
-        description: "Only message owners can delete their own messages",
+        description:
+          "You can only delete your own messages unless you are an admin",
         variant: "destructive",
       });
       return;
@@ -793,7 +853,14 @@ export default function GroupDetailsPage({
 
   const toggleMessageSelection = (messageId: string) => {
     const message = messages.find((m) => m.id === messageId);
-    if (message?.user_id !== user?.id) {
+    if (!message) return;
+
+    // Permissions: owner can delete their own, admin can delete any
+    if (message.user_id !== user?.id && !isAdmin) {
+      toast({
+        title: "Selection restricted",
+        description: "You can only select your own messages for deletion",
+      });
       return;
     }
 
@@ -801,6 +868,7 @@ export default function GroupDetailsPage({
       const newSet = new Set(prev);
       if (newSet.has(messageId)) {
         newSet.delete(messageId);
+        if (newSet.size === 0) setIsSelectMode(false);
       } else {
         newSet.add(messageId);
       }
@@ -810,10 +878,12 @@ export default function GroupDetailsPage({
 
   const handleMessageLongPress = (messageId: string) => {
     const message = messages.find((m) => m.id === messageId);
-    if (message?.user_id !== user?.id) return;
+    if (!message) return;
 
-    setIsSelectMode(true);
-    setSelectedMessages(new Set([messageId]));
+    if (message.user_id === user?.id || isAdmin) {
+      setIsSelectMode(true);
+      setSelectedMessages(new Set([messageId]));
+    }
   };
 
   const handleCancelSelection = () => {
@@ -1646,6 +1716,14 @@ export default function GroupDetailsPage({
 
                 {!isSelectMode ? (
                   <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => fetchMessages()}
+                      className="text-slate-500 dark:text-[#aebac1] hover:bg-black/5 dark:hover:bg-white/5 rounded-full"
+                    >
+                      <RotateCw className="h-5 w-5" />
+                    </Button>
                     <Dialog
                       open={isGroupInfoOpen}
                       onOpenChange={setIsGroupInfoOpen}
@@ -1916,8 +1994,8 @@ export default function GroupDetailsPage({
                         </div>
                       </div>
 
-                      {/* Selection Badge for me */}
-                      {isSelectMode && isMe && (
+                      {/* Selection Badge */}
+                      {isSelectMode && (isMe || isAdmin) && (
                         <div className="flex items-center self-center pl-2">
                           <div
                             className={cn(
