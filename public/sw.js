@@ -73,16 +73,63 @@ self.addEventListener("message", (event) => {
   if (event.data.type === "SCHEDULE_REMINDER") {
     const { title, options, schedule } = event.data.payload;
     const timeUntilNotification = schedule.at - Date.now();
-
     // Use Math.max to ensure non-negative delay, allowing immediate execution if time is passed/now
     const delay = Math.max(0, timeUntilNotification);
+
+    // setTimeout has a maximum delay of 2,147,483,647ms (~24.8 days).
+    // If delay exceeds this, it fires immediately.
+    const MAX_TIMEOUT = 2147483647;
+
+    if (timeUntilNotification > MAX_TIMEOUT) {
+      console.log(
+        `[SW] Notification for "${title}" is too far in the future (> 24 days). Scheduling deferred.`
+      );
+      return;
+    }
 
     // We allow scheduling even if it's slightly in the past (handled by immediate timeout)
     // Only ignore if it is significantly in the past (e.g. > 1 min ago) which implies a logic error or stale event
     if (timeUntilNotification > -60000) {
       setTimeout(() => {
-        self.registration.showNotification(title, options);
+        // Enhance options with defaults if missing
+        const enhancedOptions = {
+          icon: "/icons/icon.svg",
+          badge: "/icons/icon.svg",
+          vibrate: [200, 100, 200],
+          ...options,
+        };
+        self.registration.showNotification(title, enhancedOptions);
       }, delay);
     }
   }
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  // Handle action buttons
+  if (event.action === "dismiss") {
+    return;
+  }
+
+  // Open the app
+  const urlToOpen = event.notification.data?.url || "/reminders";
+
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windowClients) => {
+        // Check if there is already a window open
+        for (let i = 0; i < windowClients.length; i++) {
+          const client = windowClients[i];
+          if (client.url.includes(urlToOpen) && "focus" in client) {
+            return client.focus();
+          }
+        }
+        // If no window is open, open a new one
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
+  );
 });

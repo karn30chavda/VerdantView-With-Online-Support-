@@ -80,13 +80,28 @@ async function scheduleReminderNotifications(title: string, date: Date) {
       dueDatePoints.getTime() - 24 * 60 * 60 * 1000
     );
 
+    const upcomingPayload = {
+      title: `Upcoming: ${title}`,
+      options: {
+        body: `Reminder: You have a reminder for "${title}" tomorrow, please check it out!`,
+        icon: "/icons/icon.svg",
+        badge: "/icons/icon.svg",
+        vibrate: [200, 100, 200],
+        tag: `upcoming-${title}`,
+        data: { url: "/reminders" },
+        actions: [
+          { action: "view", title: "View Details" },
+          { action: "dismiss", title: "Dismiss" },
+        ],
+      },
+    };
+
     if (oneDayBefore.getTime() > now.getTime()) {
       // Future
       registration.active?.postMessage({
         type: "SCHEDULE_REMINDER",
         payload: {
-          title: `Upcoming: ${title}`,
-          options: { body: `Due tomorrow.` },
+          ...upcomingPayload,
           schedule: { at: oneDayBefore.getTime() },
         },
       });
@@ -98,21 +113,36 @@ async function scheduleReminderNotifications(title: string, date: Date) {
       registration.active?.postMessage({
         type: "SCHEDULE_REMINDER",
         payload: {
-          title: `Upcoming: ${title}`,
-          options: { body: `Due tomorrow.` },
+          ...upcomingPayload,
           schedule: { at: now.getTime() + 1000 },
         },
       });
     }
 
     // 2. Handle "Due Today" notification
+    const dueTodayPayload = {
+      title: `Due Today: ${title}`,
+      options: {
+        body: `Reminder: You have a reminder for "${title}" today, please check it out!`,
+        icon: "/icons/icon.svg",
+        badge: "/icons/icon.svg",
+        vibrate: [500, 100, 500, 100, 500],
+        tag: `due-today-${title}`,
+        requireInteraction: true,
+        data: { url: "/reminders" },
+        actions: [
+          { action: "view", title: "Open App" },
+          { action: "dismiss", title: "Dismiss" },
+        ],
+      },
+    };
+
     if (dueDatePoints.getTime() > now.getTime()) {
       // Future
       registration.active?.postMessage({
         type: "SCHEDULE_REMINDER",
         payload: {
-          title: `Due Today: ${title}`,
-          options: { body: `Payment is due today.` },
+          ...dueTodayPayload,
           schedule: { at: dueDatePoints.getTime() },
         },
       });
@@ -121,8 +151,7 @@ async function scheduleReminderNotifications(title: string, date: Date) {
       registration.active?.postMessage({
         type: "SCHEDULE_REMINDER",
         payload: {
-          title: `Due Today: ${title}`,
-          options: { body: `Payment is due today.` },
+          ...dueTodayPayload,
           schedule: { at: now.getTime() + 1000 }, // delay slightly
         },
       });
@@ -166,6 +195,14 @@ export default function RemindersPage() {
     }
     fetchReminders();
   }, [fetchReminders]);
+
+  useEffect(() => {
+    if (notificationPermission === "granted" && reminders.length > 0) {
+      reminders.forEach((reminder) => {
+        scheduleReminderNotifications(reminder.title, new Date(reminder.date));
+      });
+    }
+  }, [reminders.length, notificationPermission]);
 
   const requestNotificationPermission = async () => {
     if (!("Notification" in window)) {
