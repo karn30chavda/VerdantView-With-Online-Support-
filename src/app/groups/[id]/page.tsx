@@ -351,13 +351,26 @@ export default function GroupDetailsPage({
     }
   }
 
+  const [realtimeStatus, setRealtimeStatus] = useState<
+    "connected" | "disconnected" | "connecting" | "error"
+  >("connecting");
+
   useEffect(() => {
-    if (!groupId) return;
+    if (!groupId || !user) return;
 
     fetchGroupDetails();
 
-    const channel = supabase
-      .channel(`group-${groupId}`)
+    console.log(`[Realtime] Initializing channel for group: ${groupId}`);
+    setRealtimeStatus("connecting");
+
+    const channel = supabase.channel(`group_realtime_${groupId}`, {
+      config: {
+        broadcast: { self: true },
+        presence: { key: user.id },
+      },
+    });
+
+    channel
       .on(
         "postgres_changes",
         {
@@ -366,7 +379,26 @@ export default function GroupDetailsPage({
           table: "group_messages",
           filter: `group_id=eq.${groupId}`,
         },
-        () => fetchMessages()
+        (payload) => {
+          console.log("[Realtime] Message change detected:", payload);
+          if (payload.eventType === "INSERT") {
+            const newMessage = payload.new as ChatMessage;
+            setMessages((prev) => {
+              // Avoid duplicates from optimistic UI or rapid events
+              if (prev.some((m) => m.id === newMessage.id)) return prev;
+              // Remove any temporary optimistic messages with same content
+              const filtered = prev.filter(
+                (m) =>
+                  !(
+                    m.id.startsWith("temp-") && m.content === newMessage.content
+                  )
+              );
+              return [...filtered, newMessage];
+            });
+          } else {
+            fetchMessages();
+          }
+        }
       )
       .on(
         "postgres_changes",
@@ -376,7 +408,10 @@ export default function GroupDetailsPage({
           table: "expenses",
           filter: `group_id=eq.${groupId}`,
         },
-        () => fetchExpenses()
+        () => {
+          console.log("[Realtime] Expense change detected");
+          fetchExpenses();
+        }
       )
       .on(
         "postgres_changes",
@@ -386,7 +421,10 @@ export default function GroupDetailsPage({
           table: "group_members",
           filter: `group_id=eq.${groupId}`,
         },
-        () => fetchMembers()
+        () => {
+          console.log("[Realtime] Member change detected");
+          fetchMembers();
+        }
       )
       .on(
         "postgres_changes",
@@ -396,24 +434,58 @@ export default function GroupDetailsPage({
           table: "group_goals",
           filter: `group_id=eq.${groupId}`,
         },
-        () => fetchGoals()
+        () => {
+          console.log("[Realtime] Goal change detected");
+          fetchGoals();
+        }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "expense_reactions" },
-        () => fetchExpenses()
+        (payload) => {
+          console.log("[Realtime] Reaction change detected:", payload);
+          fetchExpenses();
+        }
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "goal_contributions" },
-        () => fetchGoals()
+        () => {
+          console.log("[Realtime] Contribution change detected");
+          fetchGoals();
+        }
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "groups",
+          filter: `id=eq.${groupId}`,
+        },
+        (payload) => {
+          console.log("[Realtime] Group info updated:", payload);
+          setGroup(payload.new);
+          setEditGroupName(payload.new.name);
+        }
+      );
+
+    channel.subscribe((status, err) => {
+      console.log(`[Realtime] Subscription status: ${status}`, err || "");
+      if (status === "SUBSCRIBED") {
+        setRealtimeStatus("connected");
+      } else if (status === "CLOSED" || status === "TIMED_OUT") {
+        setRealtimeStatus("disconnected");
+      } else if (status === "CHANNEL_ERROR") {
+        setRealtimeStatus("error");
+      }
+    });
 
     return () => {
+      console.log("[Realtime] Cleaning up channel");
       supabase.removeChannel(channel);
     };
-  }, [groupId, user]);
+  }, [groupId, user, isOnline]);
 
   useEffect(() => {
     const scrollToBottom = () => {
@@ -1009,23 +1081,70 @@ export default function GroupDetailsPage({
             <ChevronLeft className="mr-1 h-4 w-4" /> Back
           </Button>
           <h1 className="text-3xl font-bold tracking-tight">{group.name}</h1>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-3 mt-1">
             <Badge
               variant="outline"
-              className="font-mono text-xs tracking-widest"
+              className="font-mono text-xs tracking-widest bg-muted/50"
             >
               {group.join_code}
             </Badge>
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-muted-foreground"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
               onClick={() => {
                 navigator.clipboard.writeText(group.join_code);
                 toast({ title: "Code copied!" });
               }}
             >
               <Copy className="h-3 w-3" />
+            </Button>
+
+            <Separator orientation="vertical" className="h-4" />
+
+            {/* Status indicator */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1.5 cursor-help">
+                    <div
+                      className={cn(
+                        "h-2 w-2 rounded-full",
+                        realtimeStatus === "connected"
+                          ? "bg-emerald-500 animate-pulse"
+                          : realtimeStatus === "connecting"
+                          ? "bg-amber-500 animate-pulse"
+                          : "bg-red-500"
+                      )}
+                    />
+                    <span className="text-[10px] uppercase tracking-tighter text-muted-foreground font-medium hidden sm:inline">
+                      {realtimeStatus === "connected" ? "Live" : realtimeStatus}
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>
+                    {realtimeStatus === "connected"
+                      ? "Connected to live updates"
+                      : "Connecting to live updates..."}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <Separator orientation="vertical" className="h-4" />
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                toast({ title: "Syncing data..." });
+                fetchGroupDetails();
+              }}
+            >
+              <RotateCw className="h-3 w-3 mr-1" />
+              Sync
             </Button>
             <span className="text-sm text-muted-foreground ml-2">
               • {members.length} members
